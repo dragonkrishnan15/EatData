@@ -170,3 +170,51 @@ def test_api_export(ui_server: str, tmp_path: Path) -> None:
         assert data["status"] == "ok"
         assert data["rows_exported"] == 2
         assert Path(out_file).exists()
+
+
+def test_api_ai_preview_and_propose(ui_server: str) -> None:
+    ds_payload = {
+        "id": "ai-test-id",
+        "name": "sample",
+        "columns": [
+            {"name": "full_name", "data_type": "string"},
+            {"name": "email", "data_type": "string"},
+        ],
+        "rows": [["  alice smith  ", "alice@test.com"], ["bob jones", ""]],
+    }
+
+    # 1. Preview payload
+    prev_req = urllib.request.Request(
+        f"{ui_server}/api/ai/preview-payload",
+        data=json.dumps({"dataset": ds_payload, "alias_columns": True}).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(prev_req) as resp:
+        assert resp.status == 200
+        data = json.loads(resp.read().decode("utf-8"))
+        assert "hash" in data
+        assert "payload" in data
+        assert data["payload"]["is_aliased"] is True
+        assert data["payload"]["columns"][0]["name"] == "col_1"
+
+    # 2. Propose recipe
+    prop_req = urllib.request.Request(
+        f"{ui_server}/api/ai/propose",
+        data=json.dumps(
+            {
+                "dataset": ds_payload,
+                "prompt": "trim whitespace",
+                "provider": "mock",
+                "consent": True,
+                "alias_columns": True,
+            }
+        ).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(prop_req) as resp:
+        assert resp.status == 200
+        data = json.loads(resp.read().decode("utf-8"))
+        assert "pipeline" in data
+        assert len(data["pipeline"]["steps"]) > 0
+        # Columns in proposed recipe should be unaliased back to original names!
+        assert "full_name" in data["pipeline"]["steps"][0]["columns"]

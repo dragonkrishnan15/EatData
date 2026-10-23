@@ -4,10 +4,10 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 
 ## Current phase
 
-**Phase:** M4 — Optional AI assistance  
+**Phase:** M5 — Packaging and hardening  
 **Overall status:** IN_PROGRESS  
-**Current next task:** Define metadata allowlist and payload preview (M4-01).  
-**Last verified:** 2026-10-23 (97 unit, storage, visualization, security, CLI, and UI integration tests passing, ruff clean).
+**Current next task:** Package and smoke-test on supported OS targets (M5-01).  
+**Last verified:** 2026-10-23 (118 unit, storage, visualization, AI, security, CLI, and UI integration tests passing, ruff clean).
 
 ## Task board
 
@@ -29,11 +29,11 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 | M2-02 | DONE | Implement import/profile/clean/preview/export UI | M2-01 | Built `app.html`, `server.py`, `ChartDataService`, wired `workbench ui` command. Integration tested in `test_ui_server.py`. |
 | M3-01 | DONE | Add SQLite schema and migration strategy | M1-07 | Transactional migrations, `schema_migrations`, pipelines, job runs, settings in `sqlite_repository.py`. |
 | M3-02 | DONE | Add pipeline history and retention controls | M3-01 | Telemetry runs recorded, retention purge implemented and tested. Privacy verified via `test_storage_privacy.py`. |
-| M4-01 | TODO | Define metadata allowlist and payload preview | M1-03 | Tests prove excluded values never appear |
-| M4-02 | TODO | Define AI provider interface and router | M4-01 | Mock-provider contract tests pass |
-| M4-03 | TODO | Add strict recipe schema and validator | M0-03, M4-02 | Adversarial recipe tests pass |
-| M4-04 | TODO | Integrate first cloud provider behind consent gate | M4-02, M4-03 | Tests plus manual consent verification |
-| M4-05 | TODO | Integrate Ollama adapter and endpoint safety checks | M4-02, M4-03 | Local endpoint behavior documented and tested |
+| M4-01 | DONE | Define metadata allowlist and payload preview | M1-03 | `MetadataPackageBuilder` with column aliasing and SHA-256 payload preview tested in `test_metadata_builder.py`. |
+| M4-02 | DONE | Define AI provider interface and router | M4-01 | `AIProvider`, `ConsentGate`, `AIRouter`, and `MockAIProvider` implemented and tested. |
+| M4-03 | DONE | Add strict recipe schema and validator | M0-03, M4-02 | `RecipeValidator` enforces `ALLOWLISTED_OPERATIONS`, rejects code injection and arbitrary python in `test_recipe_validator.py`. |
+| M4-04 | DONE | Integrate first cloud provider behind consent gate | M4-02, M4-03 | `CloudAIProvider` implemented with secret safety and `test_providers.py`. |
+| M4-05 | DONE | Integrate Ollama adapter and endpoint safety checks | M4-02, M4-03 | `OllamaProvider` with loopback enforcement (refusing remote host endpoints) tested in `test_providers.py`. |
 | M5-01 | TODO | Package and smoke-test on supported OS targets | M2-02, M4-05 | Reproducible build and install test recorded |
 | M6-01 | TODO | Evaluate additional formats and industry templates | M5-01 | Prioritized by user evidence |
 | M6-02 | TODO | Threat-review MCP server mode | M5-01 | Authentication/permissions/network boundary reviewed |
@@ -88,8 +88,17 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 - Enforced STRICT PRIVACY INVARIANT (Rules 2, 6, 14): SQLite schemas never contain tables or columns for raw data rows or cell contents. Verified via binary file inspection in `tests/security/test_storage_privacy.py`.
 - Implemented retention and purge controls: `purge_job_runs(older_than_days)` allowing selective or complete deletion of execution history.
 - Wired storage into CLI with `workbench pipeline save`, `workbench pipeline list`, `workbench history list`, and `workbench history purge`.
-- Total 97 tests passing across unit, storage, security, and integration suites. Ruff linting and formatting 100% clean.
 - All M3 tasks (M3-01 and M3-02) marked DONE. Transitioned to M4.
+
+### M4 Milestone Completed: Optional AI Assistance (2026-10-23)
+- Implemented `MetadataPackageBuilder` in `src/workbench/adapters/ai/metadata.py` extracting schema, statistical quality summaries, and pattern types without sample values or cell contents. Added reversible column aliasing mode and deterministic SHA-256 payload hashing.
+- Implemented `RecipeValidator` in `src/workbench/adapters/ai/recipe_schema.py` enforcing strict validation against `ALLOWLISTED_OPERATIONS`, rejecting arbitrary Python code execution, eval, imports, and unauthorized root/step keys.
+- Implemented `AIProvider` base interface and `ConsentGate` in `src/workbench/adapters/ai/base.py`, strictly requiring explicit user consent prior to external transmission. Built offline deterministic `MockAIProvider`.
+- Implemented `OllamaProvider` with loopback security check (strictly refusing remote hosts unless authorized) and `CloudAIProvider` with secret protection.
+- Implemented `AIRouter` orchestrating provider calls, unaliasing column recipes, and validating returned recipes into executable `Pipeline` objects.
+- Wired AI into CLI via `workbench ai propose` (supporting `--preview-payload`, `--consent`, `--alias-columns`) and UI server via `/api/ai/preview-payload` and `/api/ai/propose`.
+- Total 118 tests passing across all suites. Ruff linting and formatting 100% clean.
+- All M4 tasks (M4-01 through M4-05) marked DONE. Transitioned to M5.
 
 ## Update protocol
 

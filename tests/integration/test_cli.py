@@ -149,3 +149,58 @@ def test_cli_history_list_and_purge(capsys) -> None:
     assert exit_purge == 0
     captured_purge = capsys.readouterr()
     assert "Purged" in captured_purge.out
+
+
+def test_cli_ai_propose_workflow(tmp_path: Path, capsys) -> None:
+    in_path = str(get_fixture_path("clean_sample.csv"))
+    out_pipe = tmp_path / "proposed.json"
+
+    # 1. Preview payload without consent returns code 0 and displays payload
+    code_preview = main(
+        [
+            "ai",
+            "propose",
+            in_path,
+            "--prompt",
+            "clean whitespace",
+            "--preview-payload",
+        ]
+    )
+    assert code_preview == 0
+    cap_prev = capsys.readouterr()
+    assert "Outgoing AI Metadata Payload Preview" in cap_prev.out
+    assert "Payload SHA-256" in cap_prev.out
+
+    # 2. Calling without consent or preview fails with code 1
+    code_no_consent = main(
+        [
+            "ai",
+            "propose",
+            in_path,
+            "--prompt",
+            "clean whitespace",
+        ]
+    )
+    assert code_no_consent == 1
+    cap_err = capsys.readouterr()
+    assert "Consent required" in cap_err.err
+
+    # 3. Calling with --consent and --alias-columns succeeds and writes pipeline JSON
+    code_ok = main(
+        [
+            "ai",
+            "propose",
+            in_path,
+            "--prompt",
+            "trim whitespace and drop duplicates",
+            "--consent",
+            "--alias-columns",
+            "--output-pipeline",
+            str(out_pipe),
+        ]
+    )
+    assert code_ok == 0
+    cap_ok = capsys.readouterr()
+    assert "AI Proposed Recipe" in cap_ok.out
+    assert out_pipe.exists()
+    assert "trim_whitespace" in out_pipe.read_text(encoding="utf-8")

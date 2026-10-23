@@ -283,6 +283,60 @@ def cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ai_propose(args: argparse.Namespace) -> int:
+    from workbench.adapters.ai.metadata import MetadataPackageBuilder
+    from workbench.adapters.ai.router import AIRouter
+
+    input_path = Path(args.input_path)
+    dataset = load_dataset(input_path)
+    profiler = Profiler()
+    profile = profiler.profile(dataset)
+
+    builder = MetadataPackageBuilder()
+    package = builder.build(profile, alias_columns=args.alias_columns)
+
+    if args.preview_payload:
+        sys.stdout.write("\nOutgoing AI Metadata Payload Preview:\n")
+        sys.stdout.write(f"{'-' * 60}\n")
+        sys.stdout.write(package.payload_json + "\n")
+        sys.stdout.write(f"{'-' * 60}\n")
+        sys.stdout.write(f"Payload SHA-256: {package.payload_hash}\n\n")
+        if not args.consent:
+            sys.stdout.write(
+                "To approve transmission and propose a recipe, rerun with --consent.\n"
+            )
+            return 0
+
+    if not args.consent:
+        sys.stderr.write(
+            "Consent required: Pass --consent to explicitly approve transmitting metadata "
+            "to the AI provider, or use --preview-payload to inspect first.\n"
+        )
+        return 1
+
+    router = AIRouter()
+    provider_name = args.provider
+    pipeline = router.request_recipe(
+        provider_name=provider_name,
+        package=package,
+        prompt=args.prompt,
+        explicit_consent=True,
+    )
+
+    sys.stdout.write(f"\nAI Proposed Recipe for '{dataset.name}':\n")
+    sys.stdout.write(f"Pipeline Name: {pipeline.name}\n")
+    sys.stdout.write(f"Total Steps:   {len(pipeline.steps)}\n")
+    for idx, s in enumerate(pipeline.steps):
+        sys.stdout.write(f"  {idx + 1}. {s.name} (columns: {s.columns or 'all'})\n")
+
+    if args.output_pipeline:
+        out_p = Path(args.output_pipeline)
+        out_p.write_text(pipeline.to_json(), encoding="utf-8")
+        sys.stdout.write(f"\nSaved proposed pipeline JSON to: {out_p}\n")
+
+    return 0
+
+
 def cmd_ui(args: argparse.Namespace) -> int:
     import webbrowser
 
@@ -381,6 +435,31 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-browser", action="store_true", help="Do not automatically launch web browser."
     )
     p_ui.set_defaults(func=cmd_ui)
+
+    # ai
+    p_ai = subparsers.add_parser("ai", help="Optional AI assistant commands.")
+    ai_subs = p_ai.add_subparsers(dest="subcommand", required=True)
+    p_ai_prop = ai_subs.add_parser("propose", help="Propose a cleaning recipe based on metadata.")
+    p_ai_prop.add_argument("input_path", help="Path to input dataset.")
+    p_ai_prop.add_argument(
+        "--prompt", required=True, help="Description of desired cleaning transformations."
+    )
+    p_ai_prop.add_argument(
+        "--provider", default="mock", choices=["mock", "ollama", "openai"], help="AI provider."
+    )
+    p_ai_prop.add_argument(
+        "--alias-columns", action="store_true", help="Anonymize column names before transmission."
+    )
+    p_ai_prop.add_argument(
+        "--preview-payload", action="store_true", help="Inspect metadata payload before sending."
+    )
+    p_ai_prop.add_argument(
+        "--consent", action="store_true", help="Explicitly approve transmitting metadata to AI."
+    )
+    p_ai_prop.add_argument(
+        "--output-pipeline", help="Optional destination path to save proposed pipeline JSON."
+    )
+    p_ai_prop.set_defaults(func=cmd_ai_propose)
 
     return parser
 

@@ -17,6 +17,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
+from workbench.adapters.ai.metadata import MetadataPackageBuilder
+from workbench.adapters.ai.router import AIRouter
 from workbench.adapters.exporters.csv_exporter import CsvExporter
 from workbench.adapters.exporters.json_exporter import JsonExporter
 from workbench.adapters.importers.csv_importer import CsvImporter
@@ -64,6 +66,10 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                 self._handle_chart()
             elif self.path == "/api/export":
                 self._handle_export()
+            elif self.path == "/api/ai/preview-payload":
+                self._handle_ai_preview()
+            elif self.path == "/api/ai/propose":
+                self._handle_ai_propose()
             else:
                 self._send_error_json(HTTPStatus.NOT_FOUND, f"Unknown API endpoint: {self.path}")
         except ValidationError as err:
@@ -267,6 +273,47 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                 "destination_path": str(res.destination_path),
             }
         )
+
+    def _handle_ai_preview(self) -> None:
+        payload = self._read_body_json()
+        ds_data = payload.get("dataset")
+        if not ds_data:
+            raise ValidationError("AI preview requires 'dataset'.")
+        dataset = Dataset.from_dict(ds_data)
+        alias_cols = bool(payload.get("alias_columns", False))
+        profile = Profiler().profile(dataset)
+        package = MetadataPackageBuilder().build(profile, alias_columns=alias_cols)
+        self._send_json(
+            {
+                "payload": package.payload_dict,
+                "hash": package.payload_hash,
+                "json": package.payload_json,
+            }
+        )
+
+    def _handle_ai_propose(self) -> None:
+        payload = self._read_body_json()
+        ds_data = payload.get("dataset")
+        prompt = payload.get("prompt")
+        if not ds_data or not prompt:
+            raise ValidationError("AI propose requires 'dataset' and 'prompt'.")
+        consent = bool(payload.get("consent", False))
+        if not consent:
+            raise ValidationError("Explicit user consent required to generate AI proposal.")
+        dataset = Dataset.from_dict(ds_data)
+        alias_cols = bool(payload.get("alias_columns", False))
+        provider_name = str(payload.get("provider", "mock"))
+
+        profile = Profiler().profile(dataset)
+        package = MetadataPackageBuilder().build(profile, alias_columns=alias_cols)
+        router = AIRouter()
+        pipeline = router.request_recipe(
+            provider_name=provider_name,
+            package=package,
+            prompt=prompt,
+            explicit_consent=True,
+        )
+        self._send_json({"pipeline": pipeline.to_dict()})
 
     def log_message(self, format: str, *args: Any) -> None:
         """Suppress default stdout request logging to avoid terminal clutter."""
