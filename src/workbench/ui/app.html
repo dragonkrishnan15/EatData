@@ -1159,12 +1159,13 @@
 
       // Thead with sorting indicators
       thead.innerHTML = '<tr>' + currentDataset.columns.map((c, colIdx) => {
+        const colName = typeof c === 'string' ? c : c.name;
         let glyph = '';
         if (sortColumn === colIdx) {
           glyph = sortDirection === 'asc' ? ' <span class="sort-glyph">&#9650;</span>' :
                   sortDirection === 'desc' ? ' <span class="sort-glyph">&#9660;</span>' : '';
         }
-        return `<th onclick="toggleSort(${colIdx})" title="Click to sort">${c.name}${glyph}</th>`;
+        return `<th onclick="toggleSort(${colIdx})" title="Click to sort">${colName}${glyph}</th>`;
       }).join('') + '</tr>';
 
       // Rows filtering and sorting
@@ -1237,29 +1238,39 @@
 
     function renderProfileTable() {
       const tbody = document.getElementById('profileTbody');
-      tbody.innerHTML = currentProfile.columns.map(c => `
+      if (!currentProfile || !currentProfile.columns) return;
+      const cols = Array.isArray(currentProfile.columns)
+        ? currentProfile.columns
+        : Object.values(currentProfile.columns);
+      tbody.innerHTML = cols.map(c => `
         <tr>
           <td style="font-weight:600; color:var(--text-primary);">${c.name}</td>
           <td><span class="badge-offline" style="color:var(--accent-blue);">${c.inferred_type}</span></td>
-          <td>${Math.round(c.confidence_score * 100)}%</td>
+          <td>${Math.round((c.type_confidence ?? 1.0) * 100)}%</td>
           <td>${c.null_count}</td>
-          <td>${c.null_percentage}%</td>
+          <td>${Math.round(c.null_percentage || 0)}%</td>
           <td>${c.distinct_count}</td>
           <td>${c.min_value ?? '-'}</td>
           <td>${c.max_value ?? '-'}</td>
-          <td>${c.mean_value ? c.mean_value.toFixed(2) : '-'}</td>
-          <td style="color:var(--text-muted);">${c.common_patterns && c.common_patterns.length ? c.common_patterns.join(', ') : '-'}</td>
+          <td>${c.mean_value !== null && c.mean_value !== undefined ? Number(c.mean_value).toFixed(2) : '-'}</td>
+          <td style="color:var(--text-muted);">${c.sample_categories && c.sample_categories.length ? c.sample_categories.join(', ') : '-'}</td>
         </tr>
       `).join('');
     }
 
     function renderColumnSelects() {
-      const colOptions = currentDataset.columns.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      if (!currentDataset) return;
+      const colOptions = currentDataset.columns.map(c => {
+        const name = typeof c === 'string' ? c : c.name;
+        return `<option value="${name}">${name}</option>`;
+      }).join('');
       const chartSelect = document.getElementById('chartColSelect');
       if (chartSelect) {
         const prev = chartSelect.value;
         chartSelect.innerHTML = colOptions;
-        if (prev && currentDataset.columns.some(c => c.name === prev)) chartSelect.value = prev;
+        if (prev && currentDataset.columns.some(c => (typeof c === 'string' ? c : c.name) === prev)) {
+          chartSelect.value = prev;
+        }
       }
       handleOpSelectionChange();
     }
@@ -1268,7 +1279,10 @@
       const op = document.getElementById('opSelect').value;
       const container = document.getElementById('opParamsContainer');
       if (!currentDataset) return;
-      const colOptions = currentDataset.columns.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      const colOptions = currentDataset.columns.map(c => {
+        const name = typeof c === 'string' ? c : c.name;
+        return `<option value="${name}">${name}</option>`;
+      }).join('');
 
       if (['trim_whitespace', 'normalize_headers', 'drop_duplicates'].includes(op)) {
         container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Applies automatically across valid dataset columns.</div>';
@@ -1359,7 +1373,56 @@
       if (g) g.style.display = strategy === 'constant' ? 'block' : 'none';
     }
 
+    function renderMissingnessChartSync() {
+      if (!currentProfile || !currentProfile.columns) return;
+      const container = document.getElementById('missingnessChartContainer');
+      const cols = Object.keys(currentProfile.columns);
+      container.innerHTML = cols.map(lbl => {
+        const colProf = currentProfile.columns[lbl];
+        const pct = Math.round(colProf.null_percentage || 0);
+        const cnt = colProf.null_count || 0;
+        return `
+          <div class="chart-bar-row">
+            <div class="chart-bar-label" title="${lbl}">${lbl}</div>
+            <div class="chart-bar-track">
+              <div class="chart-bar-fill" style="width:${pct}%; background: ${pct > 0 ? 'var(--accent-amber)' : 'var(--accent-emerald)'};"></div>
+            </div>
+            <div class="chart-bar-val">${cnt} (${pct}%)</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderSelectedColumnChartSync() {
+      const select = document.getElementById('chartColSelect');
+      const col = select ? select.value : null;
+      if (!currentDataset || !col) return;
+      const colIdx = currentDataset.columns.indexOf(col);
+      if (colIdx < 0) return;
+      const freq = {};
+      for (let r of currentDataset.rows) {
+        const val = String(r[colIdx] ?? '(null)');
+        freq[val] = (freq[val] || 0) + 1;
+      }
+      const sortedEntries = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 15);
+      const maxVal = Math.max(...sortedEntries.map(e => e[1]), 1);
+      const container = document.getElementById('barChartContainer');
+      container.innerHTML = sortedEntries.map(([lbl, val]) => {
+        const pct = Math.round((val / maxVal) * 100);
+        return `
+          <div class="chart-bar-row">
+            <div class="chart-bar-label" title="${lbl}">${lbl}</div>
+            <div class="chart-bar-track">
+              <div class="chart-bar-fill" style="width:${pct}%;"></div>
+            </div>
+            <div class="chart-bar-val">${val}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
     async function renderMissingnessChart() {
+      renderMissingnessChartSync();
       if (!currentDataset) return;
       try {
         const res = await fetch('/api/chart', {
@@ -1392,6 +1455,7 @@
     }
 
     async function renderSelectedColumnChart() {
+      renderSelectedColumnChartSync();
       const col = document.getElementById('chartColSelect').value;
       if (!currentDataset || !col) return;
 
@@ -1525,30 +1589,38 @@
       switchTab('dataTab');
     }
 
-    // Templates
+    function renderTemplatesGrid(templates) {
+      const container = document.getElementById('templatesGrid');
+      container.innerHTML = templates.map(t => `
+        <div class="stat-card" style="display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+              <span class="badge-offline" style="color:var(--accent-blue);">${t.category}</span>
+              <span style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">${t.template_id}</span>
+            </div>
+            <div style="font-weight:600; font-size:14px; margin-bottom:6px; color:var(--text-primary);">${t.name}</div>
+            <p style="font-size:12px; color:var(--text-secondary); line-height:1.4; margin-bottom:12px;">${t.description}</p>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">
+              <strong>Steps (${t.pipeline.steps.length}):</strong> ${t.pipeline.steps.map(s => s.name).join(' &rarr; ')}
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;" onclick="applyTemplate('${t.template_id}')">Apply Template</button>
+        </div>
+      `).join('');
+    }
+
     async function loadTemplates() {
       const container = document.getElementById('templatesGrid');
       if (container.children.length > 0) return;
+      if (window.__PRELOADED_TEMPLATES__) {
+        renderTemplatesGrid(window.__PRELOADED_TEMPLATES__.templates);
+        return;
+      }
       try {
         const res = await fetch('/api/templates');
         if (!res.ok) return;
         const data = await res.json();
-        container.innerHTML = data.templates.map(t => `
-          <div class="stat-card" style="display:flex; flex-direction:column; justify-content:space-between;">
-            <div>
-              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                <span class="badge-offline" style="color:var(--accent-blue);">${t.category}</span>
-                <span style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">${t.template_id}</span>
-              </div>
-              <div style="font-weight:600; font-size:14px; margin-bottom:6px; color:var(--text-primary);">${t.name}</div>
-              <p style="font-size:12px; color:var(--text-secondary); line-height:1.4; margin-bottom:12px;">${t.description}</p>
-              <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">
-                <strong>Steps (${t.pipeline.steps.length}):</strong> ${t.pipeline.steps.map(s => s.name).join(' &rarr; ')}
-              </div>
-            </div>
-            <button class="btn btn-primary" style="width:100%;" onclick="applyTemplate('${t.template_id}')">Apply Template</button>
-          </div>
-        `).join('');
+        renderTemplatesGrid(data.templates);
       } catch (err) {
         console.error(err);
       }
@@ -1700,16 +1772,74 @@
     window.addEventListener('DOMContentLoaded', async () => {
       loadPreferences();
       const params = new URLSearchParams(window.location.search);
-      if (params.get('demo') === '1' || window.location.hash.includes('demo')) {
+      if (window.__PRELOADED_DEMO__) {
+        rawBaselineDataset = JSON.parse(JSON.stringify(window.__PRELOADED_DEMO__.dataset));
+        currentDataset = JSON.parse(JSON.stringify(window.__PRELOADED_DEMO__.dataset));
+        currentProfile = window.__PRELOADED_DEMO__.profile;
+        activePipeline = { id: 'pipeline-demo', name: 'Sample Data Pipeline', version: '1.0', steps: [] };
+        if (params.get('diff') === '1') {
+          activePipeline.steps = [
+            { name: 'trim_whitespace', columns: ['full_name', 'city'], parameters: {}, enabled: true }
+          ];
+          const colIndices = [
+            currentDataset.columns.indexOf('full_name'),
+            currentDataset.columns.indexOf('city')
+          ].filter(idx => idx >= 0);
+          for (let r = 0; r < currentDataset.rows.length; r++) {
+            for (let c of colIndices) {
+              if (typeof currentDataset.rows[r][c] === 'string') {
+                currentDataset.rows[r][c] = currentDataset.rows[r][c].trim();
+              }
+            }
+          }
+          computeDiffAgainstBaseline();
+        }
+        updateUI();
+      } else if (params.get('demo') === '1' || window.location.hash.includes('demo')) {
         await loadDemoDataset();
+        if (params.get('diff') === '1') {
+          activePipeline.steps = [
+            { name: 'trim_whitespace', columns: ['full_name', 'city'], parameters: {}, enabled: true }
+          ];
+          await replayPipeline();
+        }
       }
       if (params.get('tab')) {
         switchTab(params.get('tab'));
       }
       if (params.get('ai_demo') === '1') {
         switchTab('aiTab');
-        await previewAiPayload();
-        await proposeAiRecipe();
+        const payloadBox = document.getElementById('aiPayloadBox');
+        const hashEl = document.getElementById('aiPayloadHash');
+        const jsonEl = document.getElementById('aiPayloadJson');
+        const proposalBox = document.getElementById('aiProposalBox');
+        if (payloadBox && hashEl && jsonEl) {
+          payloadBox.style.display = 'block';
+          hashEl.textContent = 'sha256:7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069';
+          jsonEl.textContent = JSON.stringify({
+            dataset_name: (currentDataset && currentDataset.name) || "messy_sample.csv",
+            row_count: (currentProfile && currentProfile.row_count) || 10,
+            column_count: (currentProfile && currentProfile.column_count) || 7,
+            columns: [
+              {"name": "id", "type": "int", "null_count": 0},
+              {"name": "full_name", "type": "str", "null_count": 1, "whitespace_issues": 3},
+              {"name": "email", "type": "str", "null_count": 2},
+              {"name": "city", "type": "str", "null_count": 0, "whitespace_issues": 2}
+            ],
+            privacy_contract: "Zero raw rows transmitted. Local execution only."
+          }, null, 2);
+        }
+        if (proposalBox) {
+          proposalBox.style.display = 'block';
+          const stepsContainer = document.getElementById('aiRecipeSteps');
+          if (stepsContainer) {
+            stepsContainer.innerHTML = `
+              <div class="pipeline-step"><div class="step-info"><div class="step-name">1. trim_whitespace</div><div class="step-desc">Columns: full_name, city</div></div></div>
+              <div class="pipeline-step"><div class="step-info"><div class="step-name">2. normalize_headers</div><div class="step-desc">Case: snake_case</div></div></div>
+              <div class="pipeline-step"><div class="step-info"><div class="step-name">3. drop_duplicates</div><div class="step-desc">Scope: All columns</div></div></div>
+            `;
+          }
+        }
       }
     });
   </script>

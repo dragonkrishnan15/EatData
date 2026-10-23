@@ -16,7 +16,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from workbench.adapters.ai.metadata import MetadataPackageBuilder
 from workbench.adapters.ai.router import AIRouter
@@ -109,7 +109,28 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
         if not HTML_PATH.exists():
             self._send_error_json(HTTPStatus.NOT_FOUND, "UI asset app.html not found.")
             return
-        content = HTML_PATH.read_bytes()
+        html_str = HTML_PATH.read_text(encoding="utf-8")
+        query_params = parse_qs(urlparse(self.path).query)
+        injections: list[str] = []
+        if "demo" in query_params:
+            from workbench.adapters.importers.csv_importer import CsvImporter
+
+            fix_path = Path(__file__).parents[3] / "tests" / "fixtures" / "messy_sample.csv"
+            dataset = CsvImporter().import_file(fix_path).dataset
+            profile = Profiler().profile(dataset)
+            demo_json = json.dumps({"dataset": dataset.to_dict(), "profile": profile.to_dict()})
+            injections.append(f"<script>window.__PRELOADED_DEMO__ = {demo_json};</script>")
+        if "templatesTab" in query_params.get("tab", []):
+            from workbench.templates.catalog import TemplateCatalog
+
+            templates = TemplateCatalog().list_templates()
+            tpl_json = json.dumps({"templates": [t.to_dict() for t in templates]})
+            injections.append(f"<script>window.__PRELOADED_TEMPLATES__ = {tpl_json};</script>")
+
+        if injections:
+            html_str = html_str.replace("</head>", "\n".join(injections) + "\n</head>")
+
+        content = html_str.encode("utf-8")
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(content)))
