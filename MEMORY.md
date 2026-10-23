@@ -13,7 +13,7 @@
 
 ## Environment Facts (Baseline)
 - **OS**: Windows (win32)
-- **Git**: Initialized on `master` branch.
+- **Git**: Branch `main`, tracking remote `origin` (`https://github.com/dragonkrishnan15/EatData.git`).
 - **Package & Dependency Tooling**: `uv` 0.13.0, Python 3.15.0 (managed / available via `uv` and `py`).
 - **Initial Documentation**:
   - `RULES.md`: 42 engineering invariants and workflow rules.
