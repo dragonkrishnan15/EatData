@@ -108,3 +108,44 @@ def test_cli_overwrite_conflict(tmp_path: Path, capsys) -> None:
     # With --overwrite -> succeeds with code 0
     exit_code_ok = main(["export", in_path, "--output", str(existing_file), "--overwrite"])
     assert exit_code_ok == 0
+
+
+def test_cli_pipeline_save_and_list(tmp_path: Path, capsys) -> None:
+    pipe_file = tmp_path / "saved_pipe.json"
+    pipe_file.write_text(
+        json.dumps(
+            {
+                "id": "cli-pipe-99",
+                "name": "Integration Pipeline",
+                "version": "1.0",
+                "steps": [{"name": "trim_whitespace"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    # Save pipeline
+    exit_code = main(["pipeline", "save", str(pipe_file), "--description", "Test desc"])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "Saved pipeline 'Integration Pipeline'" in captured.out
+
+    # List pipelines
+    exit_list = main(["pipeline", "list"])
+    assert exit_list == 0
+    captured_list = capsys.readouterr()
+    assert "Integration Pipeline" in captured_list.out
+
+
+def test_cli_history_list_and_purge(capsys) -> None:
+    # History list
+    exit_code = main(["history", "list", "--limit", "10"])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "Execution History" in captured.out or "No execution history records" in captured.out
+
+    # History purge
+    exit_purge = main(["history", "purge"])
+    assert exit_purge == 0
+    captured_purge = capsys.readouterr()
+    assert "Purged" in captured_purge.out

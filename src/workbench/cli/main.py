@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from datetime import UTC
 from pathlib import Path
 
 from workbench.adapters.exporters.csv_exporter import CsvExporter
@@ -124,7 +125,48 @@ def cmd_pipeline_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_pipeline_save(args: argparse.Namespace) -> int:
+    from workbench.adapters.storage.sqlite_repository import get_default_repository
+
+    pipe_path = Path(args.pipeline_path)
+    if not pipe_path.exists():
+        sys.stderr.write(f"Error: Pipeline file not found: {pipe_path}\n")
+        return 1
+
+    content = pipe_path.read_text(encoding="utf-8")
+    pipeline = Pipeline.from_json(content)
+    repo = get_default_repository()
+    repo.save_pipeline(pipeline, description=args.description or "")
+    sys.stdout.write(f"Saved pipeline '{pipeline.name}' (ID: {pipeline.id}) to repository.\n")
+    return 0
+
+
+def cmd_pipeline_list(args: argparse.Namespace) -> int:
+    from workbench.adapters.storage.sqlite_repository import get_default_repository
+
+    repo = get_default_repository()
+    pipelines = repo.list_pipelines()
+    if not pipelines:
+        sys.stdout.write("No saved pipelines found in local repository.\n")
+        return 0
+
+    sys.stdout.write(f"\nSaved Pipelines ({len(pipelines)} total):\n")
+    sys.stdout.write(f"{'-' * 80}\n")
+    sys.stdout.write(f"{'ID':<38} {'Name':<30} {'Version':<8}\n")
+    sys.stdout.write(f"{'-' * 80}\n")
+    for p in pipelines:
+        sys.stdout.write(f"{p['id']:<38} {p['name'][:29]:<30} {p['version']:<8}\n")
+    sys.stdout.write(f"{'-' * 80}\n\n")
+    return 0
+
+
 def cmd_transform(args: argparse.Namespace) -> int:
+    import time
+    import uuid
+    from datetime import datetime
+
+    from workbench.adapters.storage.sqlite_repository import JobRunRecord, get_default_repository
+
     input_path = Path(args.input_path)
     pipe_path = Path(args.pipeline)
     output_path = Path(args.output)
@@ -133,15 +175,48 @@ def cmd_transform(args: argparse.Namespace) -> int:
     content = pipe_path.read_text(encoding="utf-8")
     pipeline = Pipeline.from_json(content)
 
-    registry = TransformationRegistry()
-    final_ds, reports = registry.execute_pipeline(dataset, pipeline)
+    t0 = time.perf_counter()
+    status = "success"
+    err_msg: str | None = None
+    reports = []
+    final_ds = dataset
 
-    save_dataset(
-        final_ds,
-        output_path=output_path,
-        source_path=input_path,
-        overwrite=args.overwrite,
-    )
+    try:
+        registry = TransformationRegistry()
+        final_ds, reports = registry.execute_pipeline(dataset, pipeline)
+
+        save_dataset(
+            final_ds,
+            output_path=output_path,
+            source_path=input_path,
+            overwrite=args.overwrite,
+        )
+    except Exception as err:
+        status = "failed"
+        err_msg = str(err)
+        raise
+    finally:
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        total_affected = sum(r.rows_affected for r in reports)
+        try:
+            repo = get_default_repository()
+            repo.record_job_run(
+                JobRunRecord(
+                    id=str(uuid.uuid4()),
+                    pipeline_id=pipeline.id,
+                    pipeline_name=pipeline.name,
+                    input_filename=input_path.name,
+                    rows_before=dataset.row_count,
+                    rows_after=final_ds.row_count,
+                    rows_affected=total_affected,
+                    execution_time_ms=round(elapsed_ms, 2),
+                    status=status,
+                    error_message=err_msg,
+                    executed_at=datetime.now(UTC).isoformat(),
+                )
+            )
+        except Exception as storage_err:
+            sys.stderr.write(f"Warning: Failed to persist job run telemetry: {storage_err}\n")
 
     sys.stdout.write("Successfully transformed dataset:\n")
     sys.stdout.write(f" - Input:        {input_path} ({dataset.row_count} rows)\n")
@@ -150,6 +225,45 @@ def cmd_transform(args: argparse.Namespace) -> int:
     for r in reports:
         sys.stdout.write(f"   * {r.operation_name}: {r.rows_affected} rows affected\n")
 
+    return 0
+
+
+def cmd_history_list(args: argparse.Namespace) -> int:
+    from workbench.adapters.storage.sqlite_repository import get_default_repository
+
+    repo = get_default_repository()
+    runs = repo.list_job_runs(limit=args.limit, status=args.status)
+    if not runs:
+        sys.stdout.write("No execution history records found.\n")
+        return 0
+
+    sys.stdout.write(f"\nExecution History ({len(runs)} displayed):\n")
+    sys.stdout.write(f"{'-' * 80}\n")
+    header = f"{'Executed At':<20} {'Pipeline':<20} {'File':<18} {'Status':<8} {'Time (ms)':<10}\n"
+    sys.stdout.write(header)
+    sys.stdout.write(f"{'-' * 80}\n")
+    for r in runs:
+        exec_at = r.executed_at[:19].replace("T", " ")
+        p_name = r.pipeline_name[:19]
+        f_name = r.input_filename[:17]
+        sys.stdout.write(
+            f"{exec_at:<20} {p_name:<20} {f_name:<18} {r.status:<8} {r.execution_time_ms:<10.1f}\n"
+        )
+    sys.stdout.write(f"{'-' * 80}\n\n")
+    return 0
+
+
+def cmd_history_purge(args: argparse.Namespace) -> int:
+    from workbench.adapters.storage.sqlite_repository import get_default_repository
+
+    repo = get_default_repository()
+    deleted = repo.purge_job_runs(older_than_days=args.older_than_days)
+    if args.older_than_days:
+        sys.stdout.write(
+            f"Purged {deleted} history records older than {args.older_than_days} days.\n"
+        )
+    else:
+        sys.stdout.write(f"Purged all {deleted} execution history records.\n")
     return 0
 
 
@@ -216,6 +330,32 @@ def build_parser() -> argparse.ArgumentParser:
     p_pipe_val.add_argument("pipeline_path", help="Path to pipeline JSON file.")
     p_pipe_val.add_argument("--dataset", help="Optional path to dataset to validate schema.")
     p_pipe_val.set_defaults(func=cmd_pipeline_validate)
+
+    p_pipe_save = pipe_subs.add_parser("save", help="Save a pipeline JSON into repository.")
+    p_pipe_save.add_argument("pipeline_path", help="Path to pipeline JSON file.")
+    p_pipe_save.add_argument("--description", default="", help="Optional description.")
+    p_pipe_save.set_defaults(func=cmd_pipeline_save)
+
+    p_pipe_list = pipe_subs.add_parser("list", help="List saved pipelines in repository.")
+    p_pipe_list.set_defaults(func=cmd_pipeline_list)
+
+    # history
+    p_hist = subparsers.add_parser("history", help="Inspect and manage transformation history.")
+    hist_subs = p_hist.add_subparsers(dest="subcommand", required=True)
+    p_hist_list = hist_subs.add_parser("list", help="List past transformation runs.")
+    p_hist_list.add_argument("--limit", type=int, default=50, help="Maximum records to show.")
+    p_hist_list.add_argument(
+        "--status", choices=["success", "failed", "cancelled"], help="Filter by status."
+    )
+    p_hist_list.set_defaults(func=cmd_history_list)
+
+    p_hist_purge = hist_subs.add_parser(
+        "purge", help="Retention control: delete execution history records."
+    )
+    p_hist_purge.add_argument(
+        "--older-than-days", type=int, default=None, help="Purge records older than N days."
+    )
+    p_hist_purge.set_defaults(func=cmd_history_purge)
 
     # transform
     p_trans = subparsers.add_parser("transform", help="Apply a pipeline to clean a dataset.")

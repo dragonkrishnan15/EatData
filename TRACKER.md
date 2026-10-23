@@ -4,10 +4,10 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 
 ## Current phase
 
-**Phase:** M3 — Persistence and reproducibility  
+**Phase:** M4 — Optional AI assistance  
 **Overall status:** IN_PROGRESS  
-**Current next task:** SQLite schema and migration strategy (M3-01).  
-**Last verified:** 2026-10-23 (86 unit, visualization, security, CLI, and UI integration tests passing, ruff clean).
+**Current next task:** Define metadata allowlist and payload preview (M4-01).  
+**Last verified:** 2026-10-23 (97 unit, storage, visualization, security, CLI, and UI integration tests passing, ruff clean).
 
 ## Task board
 
@@ -27,8 +27,8 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 | M1-07 | DONE | Build CLI profile/transform/export workflow | M1-03, M1-06 | `workbench` CLI implemented; integration tests in `test_cli.py` pass. |
 | M2-01 | DONE | Evaluate UI shell and prototype primary workflow | M1-07 | Recorded ADR-003 in `DECISIONS.md`. Self-contained offline desktop UI bound strictly to `127.0.0.1`. |
 | M2-02 | DONE | Implement import/profile/clean/preview/export UI | M2-01 | Built `app.html`, `server.py`, `ChartDataService`, wired `workbench ui` command. Integration tested in `test_ui_server.py`. |
-| M3-01 | TODO | Add SQLite schema and migration strategy | M1-07 | Migration and corruption tests pass |
-| M3-02 | TODO | Add pipeline history and retention controls | M3-01 | History contains no raw rows or secrets |
+| M3-01 | DONE | Add SQLite schema and migration strategy | M1-07 | Transactional migrations, `schema_migrations`, pipelines, job runs, settings in `sqlite_repository.py`. |
+| M3-02 | DONE | Add pipeline history and retention controls | M3-01 | Telemetry runs recorded, retention purge implemented and tested. Privacy verified via `test_storage_privacy.py`. |
 | M4-01 | TODO | Define metadata allowlist and payload preview | M1-03 | Tests prove excluded values never appear |
 | M4-02 | TODO | Define AI provider interface and router | M4-01 | Mock-provider contract tests pass |
 | M4-03 | TODO | Add strict recipe schema and validator | M0-03, M4-02 | Adversarial recipe tests pass |
@@ -81,6 +81,15 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 - Implemented unit tests for chart data service (`tests/unit/visualization/test_chart_data.py`) and full integration tests for UI server (`tests/integration/test_ui_server.py`).
 - 86 tests passing, ruff lint and format 100% clean.
 - All M2 tasks (M2-01 and M2-02) marked DONE. Transitioned to M3.
+
+### M3 Milestone Completed: Persistence and Reproducibility (2026-10-23)
+- Implemented transactional schema migration manager in `src/workbench/adapters/storage/schema.py` tracking versioning via `schema_migrations`.
+- Implemented `SqliteRepository` in `src/workbench/adapters/storage/sqlite_repository.py` with WAL mode and foreign key enforcement, persisting pipeline specifications, execution telemetry (`job_runs`), and application settings.
+- Enforced STRICT PRIVACY INVARIANT (Rules 2, 6, 14): SQLite schemas never contain tables or columns for raw data rows or cell contents. Verified via binary file inspection in `tests/security/test_storage_privacy.py`.
+- Implemented retention and purge controls: `purge_job_runs(older_than_days)` allowing selective or complete deletion of execution history.
+- Wired storage into CLI with `workbench pipeline save`, `workbench pipeline list`, `workbench history list`, and `workbench history purge`.
+- Total 97 tests passing across unit, storage, security, and integration suites. Ruff linting and formatting 100% clean.
+- All M3 tasks (M3-01 and M3-02) marked DONE. Transitioned to M4.
 
 ## Update protocol
 
