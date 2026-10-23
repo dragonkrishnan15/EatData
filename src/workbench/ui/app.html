@@ -305,6 +305,7 @@
       <span class="badge-offline">Local Engine Offline</span>
     </div>
     <div class="header-actions">
+      <button class="btn" onclick="loadDemoDataset()">Load Sample Data</button>
       <input type="file" id="fileInput" style="display:none" accept=".csv,.tsv,.json,.ndjson" onchange="handleFileSelected(this)">
       <button class="btn" onclick="document.getElementById('fileInput').click()">Import File</button>
       <button class="btn btn-primary" onclick="showExportModal()">Export Cleaned</button>
@@ -316,7 +317,7 @@
     <div class="sidebar">
       <div class="sidebar-section">
         <div class="sidebar-section-title">Active Dataset</div>
-        <div id="datasetInfo" style="color:var(--text-secondary);">No dataset loaded. Click "Import File" to start.</div>
+        <div id="datasetInfo" style="color:var(--text-secondary);">No dataset loaded. Click "Import File" or "Load Sample Data" to start.</div>
       </div>
 
       <div class="sidebar-section">
@@ -351,9 +352,11 @@
     <!-- Main Content Area -->
     <div class="content-area">
       <div class="nav-tabs">
-        <div class="nav-tab active" onclick="switchTab('dataTab')">Data Table & Diff</div>
-        <div class="nav-tab" onclick="switchTab('profileTab')">Quality Profile</div>
-        <div class="nav-tab" onclick="switchTab('visualizeTab')">Visualizations</div>
+        <div id="tabBtn-dataTab" class="nav-tab active" onclick="switchTab('dataTab')">Data Table & Diff</div>
+        <div id="tabBtn-profileTab" class="nav-tab" onclick="switchTab('profileTab')">Quality Profile</div>
+        <div id="tabBtn-visualizeTab" class="nav-tab" onclick="switchTab('visualizeTab')">Visualizations</div>
+        <div id="tabBtn-aiTab" class="nav-tab" onclick="switchTab('aiTab')">AI Recipe Assistant</div>
+        <div id="tabBtn-templatesTab" class="nav-tab" onclick="switchTab('templatesTab')">Domain Templates</div>
       </div>
 
       <!-- Tab 1: Data Table & Diff -->
@@ -434,6 +437,64 @@
           <div id="barChartContainer"></div>
         </div>
       </div>
+
+      <!-- Tab 4: AI Recipe Assistant -->
+      <div id="aiTab" class="tab-content">
+        <div class="chart-box" style="margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <h4 style="font-size:14px; font-weight:600;">Optional AI Recipe Assistant</h4>
+            <span class="badge-offline">Privacy Invariant: 0 Raw Rows Transmitted</span>
+          </div>
+          <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">
+            Propose a reproducible cleaning pipeline using natural language. Only schema types and statistical quality summaries are sent — never your raw data.
+          </p>
+          <div class="form-group">
+            <label class="form-label">Desired Cleaning Transformations (Prompt)</label>
+            <input type="text" id="aiPrompt" class="form-input" style="padding:10px;" value="Trim extra whitespace from all text columns, normalize headers to snake_case, and drop duplicate records.">
+          </div>
+          <div style="display:flex; gap:20px; align-items:center; margin-bottom:14px;">
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" id="aiAliasCols">
+              <span>Anonymize Column Names (e.g. col_0, col_1)</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;">
+              <input type="checkbox" id="aiConsent" checked>
+              <span style="color:var(--accent-blue); font-weight:500;">Explicit Consent: Authorize Metadata Transmission</span>
+            </label>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="btn" onclick="previewAiPayload()">Inspect Metadata Payload & SHA-256</button>
+            <button class="btn btn-primary" onclick="proposeAiRecipe()">Propose Cleaning Recipe</button>
+          </div>
+        </div>
+
+        <div id="aiPayloadBox" class="chart-box" style="display:none; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <h5 style="font-size:12px; font-weight:600;">Sanitized Metadata Payload (Sha256 Hash)</h5>
+            <span id="aiPayloadHash" style="font-family:var(--font-mono); font-size:11px; color:var(--accent-blue);"></span>
+          </div>
+          <pre id="aiPayloadJson" style="font-family:var(--font-mono); font-size:11px; background:var(--bg-surface-elevated); padding:10px; border-radius:5px; max-height:220px; overflow:auto;"></pre>
+        </div>
+
+        <div id="aiProposalBox" class="chart-box" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h5 style="font-size:13px; font-weight:600;">Proposed Transformation Recipe</h5>
+            <button class="btn btn-primary" onclick="applyProposedAiRecipe()">Apply Recipe to Dataset</button>
+          </div>
+          <div id="aiStepsList" class="pipeline-list"></div>
+        </div>
+      </div>
+
+      <!-- Tab 5: Domain Templates -->
+      <div id="templatesTab" class="tab-content">
+        <div style="margin-bottom:14px;">
+          <h3 style="font-size:14px; font-weight:600;">Curated Industry Domain Templates</h3>
+          <p style="font-size:12px; color:var(--text-secondary); margin-top:4px;">
+            Ready-to-use, deterministic recipes pre-configured for standard compliance and cleaning requirements.
+          </p>
+        </div>
+        <div id="templatesGrid" class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px;"></div>
+      </div>
     </div>
   </div>
 
@@ -442,12 +503,18 @@
     let currentProfile = null;
     let activePipeline = { steps: [] };
     let modifiedCellSet = new Set();
+    let lastProposedAiPipeline = null;
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-      event.target.classList.add('active');
+      const content = document.getElementById(tabId);
+      if (content) content.classList.add('active');
+      const btn = document.getElementById('tabBtn-' + tabId);
+      if (btn) btn.classList.add('active');
+      if (tabId === 'templatesTab') {
+        loadTemplates();
+      }
     }
 
     async function handleFileSelected(input) {
@@ -809,6 +876,203 @@
         alert('Server error: ' + err);
       }
     }
+
+    async function loadDemoDataset() {
+      try {
+        const res = await fetch('/api/demo');
+        if (!res.ok) {
+          alert('Could not load sample data.');
+          return;
+        }
+        const data = await res.json();
+        currentDataset = data.dataset;
+        currentProfile = data.profile;
+        activePipeline = { steps: [] };
+        modifiedCellSet.clear();
+
+        // Automatically precompute prospective diff preview for demonstration
+        try {
+          const prevRes = await fetch('/api/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dataset: currentDataset,
+              operation: { name: 'trim_whitespace', columns: [], parameters: {} }
+            })
+          });
+          if (prevRes.ok) {
+            const prevData = await prevRes.json();
+            prevData.modified_cells.forEach(coord => modifiedCellSet.add(`${coord[0]},${coord[1]}`));
+          }
+        } catch (_) {}
+
+        updateUI();
+      } catch (err) {
+        alert('Error loading sample data: ' + err);
+      }
+    }
+
+    async function previewAiPayload() {
+      if (!currentDataset) { alert('Please load or import a dataset first.'); return; }
+      const alias = document.getElementById('aiAliasCols').checked;
+      try {
+        const res = await fetch('/api/ai/preview-payload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataset: currentDataset, alias_columns: alias })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Error: ' + err.message);
+          return;
+        }
+        const data = await res.json();
+        document.getElementById('aiPayloadHash').textContent = data.hash;
+        document.getElementById('aiPayloadJson').textContent = JSON.stringify(data.payload, null, 2);
+        document.getElementById('aiPayloadBox').style.display = 'block';
+      } catch (err) {
+        alert('AI preview error: ' + err);
+      }
+    }
+
+    async function proposeAiRecipe() {
+      if (!currentDataset) { alert('Please load or import a dataset first.'); return; }
+      const consent = document.getElementById('aiConsent').checked;
+      if (!consent) { alert('Explicit consent is required to propose a recipe.'); return; }
+      const prompt = document.getElementById('aiPrompt').value;
+      const alias = document.getElementById('aiAliasCols').checked;
+
+      try {
+        const res = await fetch('/api/ai/propose', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dataset: currentDataset,
+            prompt: prompt,
+            alias_columns: alias,
+            provider: 'mock',
+            consent: true
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Error: ' + err.message);
+          return;
+        }
+        const data = await res.json();
+        lastProposedAiPipeline = data.pipeline;
+        const box = document.getElementById('aiProposalBox');
+        const list = document.getElementById('aiStepsList');
+        list.innerHTML = data.pipeline.steps.map((s, i) => `
+          <div class="pipeline-step">
+            <div>
+              <div class="step-name">${i + 1}. ${s.name}</div>
+              <div class="step-desc">${s.columns && s.columns.length ? s.columns.join(', ') : 'All columns'}</div>
+            </div>
+          </div>
+        `).join('');
+        box.style.display = 'block';
+      } catch (err) {
+        alert('AI propose error: ' + err);
+      }
+    }
+
+    async function applyProposedAiRecipe() {
+      if (!lastProposedAiPipeline || !currentDataset) return;
+      try {
+        const res = await fetch('/api/transform', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataset: currentDataset, pipeline: lastProposedAiPipeline })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Transform error: ' + err.message);
+          return;
+        }
+        const data = await res.json();
+        currentDataset = data.dataset;
+        currentProfile = data.profile;
+        activePipeline = lastProposedAiPipeline;
+        updateUI();
+        switchTab('dataTab');
+      } catch (err) {
+        alert('Server error: ' + err);
+      }
+    }
+
+    async function loadTemplates() {
+      const container = document.getElementById('templatesGrid');
+      if (container.children.length > 0) return;
+      try {
+        const res = await fetch('/api/templates');
+        if (!res.ok) return;
+        const data = await res.json();
+        container.innerHTML = data.templates.map(t => `
+          <div class="stat-card" style="display:flex; flex-direction:column; justify-content:space-between;">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                <span class="badge-offline" style="color:var(--accent-blue);">${t.category}</span>
+                <span style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">${t.template_id}</span>
+              </div>
+              <div style="font-weight:600; font-size:14px; margin-bottom:6px; color:var(--text-primary);">${t.name}</div>
+              <p style="font-size:12px; color:var(--text-secondary); line-height:1.4; margin-bottom:12px;">${t.description}</p>
+              <div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">
+                <strong>Steps (${t.pipeline.steps.length}):</strong> ${t.pipeline.steps.map(s => s.name).join(' &rarr; ')}
+              </div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;" onclick="applyTemplate('${t.template_id}')">Apply Template</button>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function applyTemplate(templateId) {
+      if (!currentDataset) { alert('Please load or import a dataset first.'); return; }
+      try {
+        const res = await fetch('/api/templates');
+        if (!res.ok) return;
+        const data = await res.json();
+        const tpl = data.templates.find(t => t.template_id === templateId);
+        if (!tpl) return;
+
+        const transRes = await fetch('/api/transform', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataset: currentDataset, pipeline: tpl.pipeline })
+        });
+        if (!transRes.ok) {
+          const err = await transRes.json();
+          alert('Template execution error: ' + err.message);
+          return;
+        }
+        const result = await transRes.json();
+        currentDataset = result.dataset;
+        currentProfile = result.profile;
+        activePipeline = tpl.pipeline;
+        updateUI();
+        switchTab('dataTab');
+      } catch (err) {
+        alert('Server error: ' + err);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('demo') === '1' || window.location.hash.includes('demo')) {
+        await loadDemoDataset();
+      }
+      if (params.get('tab')) {
+        switchTab(params.get('tab'));
+      }
+      if (params.get('ai_demo') === '1') {
+        switchTab('aiTab');
+        await previewAiPayload();
+        await proposeAiRecipe();
+      }
+    });
   </script>
 </body>
 </html>

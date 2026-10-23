@@ -16,6 +16,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from workbench.adapters.ai.metadata import MetadataPackageBuilder
 from workbench.adapters.ai.router import AIRouter
@@ -44,31 +45,45 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         """Handle GET requests."""
-        if self.path in ("/", "/index.html"):
+        path = urlparse(self.path).path
+        if path in ("/", "/index.html"):
             self._serve_html()
-        elif self.path == "/api/health":
+        elif path == "/api/health":
             self._send_json({"status": "ok", "app": "EatData Offline Workbench"})
+        elif path == "/api/templates":
+            from workbench.templates.catalog import TemplateCatalog
+
+            templates = TemplateCatalog().list_templates()
+            self._send_json({"templates": [t.to_dict() for t in templates]})
+        elif path == "/api/demo":
+            from workbench.adapters.importers.csv_importer import CsvImporter
+
+            fix_path = Path(__file__).parents[3] / "tests" / "fixtures" / "messy_sample.csv"
+            dataset = CsvImporter().import_file(fix_path).dataset
+            profile = Profiler().profile(dataset)
+            self._send_json({"dataset": dataset.to_dict(), "profile": profile.to_dict()})
         else:
             self._send_error_json(HTTPStatus.NOT_FOUND, f"Endpoint '{self.path}' not found.")
 
     def do_POST(self) -> None:
         """Handle POST requests."""
+        path = urlparse(self.path).path
         try:
-            if self.path == "/api/import":
+            if path == "/api/import":
                 self._handle_import()
-            elif self.path == "/api/profile":
+            elif path == "/api/profile":
                 self._handle_profile()
-            elif self.path == "/api/preview":
+            elif path == "/api/preview":
                 self._handle_preview()
-            elif self.path == "/api/transform":
+            elif path == "/api/transform":
                 self._handle_transform()
-            elif self.path == "/api/chart":
+            elif path == "/api/chart":
                 self._handle_chart()
-            elif self.path == "/api/export":
+            elif path == "/api/export":
                 self._handle_export()
-            elif self.path == "/api/ai/preview-payload":
+            elif path == "/api/ai/preview-payload":
                 self._handle_ai_preview()
-            elif self.path == "/api/ai/propose":
+            elif path == "/api/ai/propose":
                 self._handle_ai_propose()
             else:
                 self._send_error_json(HTTPStatus.NOT_FOUND, f"Unknown API endpoint: {self.path}")
