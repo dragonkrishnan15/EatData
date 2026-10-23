@@ -1,0 +1,110 @@
+"""CLI integration tests."""
+
+import json
+from pathlib import Path
+
+from tests.fixtures import get_fixture_path
+from workbench.cli.main import main
+
+
+def test_cli_profile_table(capsys) -> None:
+    path = str(get_fixture_path("clean_sample.csv"))
+    exit_code = main(["profile", path])
+
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "Dataset Profile: clean_sample" in captured.out
+    assert "Rows:               5" in captured.out
+    assert "Columns:            6" in captured.out
+
+
+def test_cli_profile_json(capsys) -> None:
+    path = str(get_fixture_path("clean_sample.csv"))
+    exit_code = main(["profile", path, "--format", "json"])
+
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert data["row_count"] == 5
+    assert data["column_count"] == 6
+
+
+def test_cli_pipeline_validate(tmp_path: Path, capsys) -> None:
+    pipe_file = tmp_path / "pipe.json"
+    pipe_file.write_text(
+        json.dumps(
+            {
+                "name": "CLI Pipeline",
+                "steps": [{"name": "trim_whitespace"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(["pipeline", "validate", str(pipe_file)])
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "Pipeline 'CLI Pipeline' (version 1.0) is valid." in captured.out
+
+
+def test_cli_transform(tmp_path: Path, capsys) -> None:
+    in_path = str(get_fixture_path("messy_sample.csv"))
+    out_file = tmp_path / "cleaned.csv"
+    pipe_file = tmp_path / "pipe.json"
+
+    pipe_file.write_text(
+        json.dumps(
+            {
+                "name": "Clean Pipeline",
+                "steps": [
+                    {"name": "trim_whitespace"},
+                    {"name": "drop_duplicates"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "transform",
+            in_path,
+            "--pipeline",
+            str(pipe_file),
+            "--output",
+            str(out_file),
+        ]
+    )
+
+    assert exit_code == 0
+    assert out_file.exists()
+    captured = capsys.readouterr()
+    assert "Successfully transformed dataset" in captured.out
+    assert "drop_duplicates: 1 rows affected" in captured.out
+
+
+def test_cli_export(tmp_path: Path, capsys) -> None:
+    in_path = str(get_fixture_path("clean_sample.csv"))
+    out_file = tmp_path / "converted.json"
+
+    exit_code = main(["export", in_path, "--output", str(out_file)])
+    assert exit_code == 0
+    assert out_file.exists()
+    captured = capsys.readouterr()
+    assert "Exported 5 rows to" in captured.out
+
+
+def test_cli_overwrite_conflict(tmp_path: Path, capsys) -> None:
+    in_path = str(get_fixture_path("clean_sample.csv"))
+    existing_file = tmp_path / "existing.csv"
+    existing_file.write_text("dummy", encoding="utf-8")
+
+    # Without --overwrite -> fails with code 1
+    exit_code = main(["export", in_path, "--output", str(existing_file)])
+    assert exit_code == 1
+    captured = capsys.readouterr()
+    assert "Workbench Error: Destination file already exists" in captured.err
+
+    # With --overwrite -> succeeds with code 0
+    exit_code_ok = main(["export", in_path, "--output", str(existing_file), "--overwrite"])
+    assert exit_code_ok == 0

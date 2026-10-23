@@ -31,5 +31,13 @@
   - Tooling: `pytest` 9.1.1, `ruff` 0.17.2, `pytest-cov` 7.1.0 in `.venv`.
   - Domain models in `src/workbench/domain/`: `Dataset`, `ColumnMetadata`, `DataType`, `DatasetProfile`, `ColumnProfile`, `Operation`, `OperationName`, `Pipeline`, `errors.py`.
   - Test coverage: 27 automated unit and security tests passing.
-- **M1 (Local Engine)**: In progress.
-  - Immediate next task: `M1-01` (Implement CSV importer with limits, encoding detection, and structured errors).
+- **M1 (Local Engine)**: Completed.
+  - `CsvImporter` and `JsonImporter` with streaming, flattening, delimiter/encoding detection, and resource bounds.
+  - `Profiler` with statistical distributions, null/duplicate/empty tracking, and confidence-scored type inference.
+  - Pure allowlisted `transformations.py` and `TransformationRegistry` supporting 12 operations.
+  - `PreviewEngine` generating deterministic before/after cell diffs agreeing with execution semantics (Rule 17).
+  - Safe `CsvExporter` and `JsonExporter` with atomic replacement, overwrite protection, and formula-injection defense.
+  - `workbench` CLI fully functional (`profile`, `pipeline validate`, `transform`, `export`).
+  - Total test suite: 72 tests passing across unit, security, and CLI integration tests.
+- **M2 (Usable First Interface)**: Next phase.
+  - Immediate task: `M2-01` (Evaluate desktop UI shell and prototype primary workflow).

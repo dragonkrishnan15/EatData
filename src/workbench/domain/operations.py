@@ -96,10 +96,8 @@ class Operation:
                 raise ValidationError("Strategy 'constant' requires a 'value' parameter.")
 
         elif self.name == OperationName.FILTER_ROWS.value:
-            if "condition" not in self.parameters or "operator" not in self.parameters:
-                raise ValidationError(
-                    "Operation 'filter_rows' requires 'condition' and 'operator' parameters."
-                )
+            if "operator" not in self.parameters:
+                raise ValidationError("Operation 'filter_rows' requires parameter 'operator'.")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize operation to a clean JSON-compatible dictionary."""

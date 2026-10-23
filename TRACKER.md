@@ -4,10 +4,10 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 
 ## Current phase
 
-**Phase:** M1 — Local engine  
-**Overall status:** IN_PROGRESS  
-**Current next task:** Implement CSV importer with limits and structured errors (M1-01).  
-**Last verified:** 2026-10-23 (27 unit and security tests passing, ruff lint/format clean).
+**Phase:** M2 — Usable first interface  
+**Overall status:** TODO  
+**Current next task:** Evaluate UI shell and prototype primary workflow (M2-01).  
+**Last verified:** 2026-10-23 (72 unit, security, and CLI integration tests passing, ruff clean).
 
 ## Task board
 
@@ -18,13 +18,13 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 | M0-03 | DONE | Define Dataset, Profile, Operation, Pipeline, and structured error contracts | M0-01 | Domain models created in `src/workbench/domain/`, 21 unit tests passing. |
 | M0-04 | DONE | Add synthetic CSV/JSON fixtures including malformed and edge-case data | M0-01 | 9 synthetic fixtures in `tests/fixtures/`, zero secrets or real data verified via tests. |
 | M0-05 | DONE | Add privacy tests and threat-model review | M0-03, M0-04 | `THREAT_MODEL.md` created; `tests/security/` verifies redaction and allowlist invariants. |
-| M1-01 | TODO | Implement CSV importer with limits and structured errors | M0-02, M0-03 | Import tests pass |
-| M1-02 | TODO | Implement JSON importer with nesting/resource limits | M0-02, M0-03 | Import tests pass |
-| M1-03 | TODO | Implement local profiler | M1-01, M1-02 | Counts and inferred types tested |
-| M1-04 | TODO | Implement allowlisted transformations and pipeline validator | M0-03 | Deterministic operation tests pass |
-| M1-05 | TODO | Implement preview and execution semantics | M1-04 | Preview agrees with execution for supported operations |
-| M1-06 | TODO | Implement CSV/JSON export without source overwrite by default | M1-05 | Round-trip and conflict tests pass |
-| M1-07 | TODO | Build CLI profile/transform/export workflow | M1-03, M1-06 | CLI integration tests pass |
+| M1-01 | DONE | Implement CSV importer with limits and structured errors | M0-02, M0-03 | `CsvImporter` implemented; tests in `test_csv_importer.py` pass. |
+| M1-02 | DONE | Implement JSON importer with nesting/resource limits | M0-02, M0-03 | `JsonImporter` implemented; flattening & limits tested in `test_json_importer.py`. |
+| M1-03 | DONE | Implement local profiler | M1-01, M1-02 | `Profiler` implemented; type inference & metrics tested in `test_profiler.py`. |
+| M1-04 | DONE | Implement allowlisted transformations and pipeline validator | M0-03 | 12 pure transformations & `TransformationRegistry` tested in `test_transformations.py`. |
+| M1-05 | DONE | Implement preview and execution semantics | M1-04 | `PreviewEngine` implemented; verified preview agrees with execution in `test_preview.py`. |
+| M1-06 | DONE | Implement CSV/JSON export without source overwrite by default | M1-05 | `CsvExporter` & `JsonExporter` with atomic writes, formula injection defense tested. |
+| M1-07 | DONE | Build CLI profile/transform/export workflow | M1-03, M1-06 | `workbench` CLI implemented; integration tests in `test_cli.py` pass. |
 | M2-01 | TODO | Evaluate UI shell and prototype primary workflow | M1-07 | Decision recorded with trade-offs |
 | M2-02 | TODO | Implement import/profile/clean/preview/export UI | M2-01 | Primary journey tested |
 | M3-01 | TODO | Add SQLite schema and migration strategy | M1-07 | Migration and corruption tests pass |
@@ -59,6 +59,18 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 - Implemented unit and security tests in `tests/unit/domain/`, `tests/unit/test_fixtures.py`, `tests/security/test_privacy_invariants.py`.
 - Verified 27 tests passing, `ruff check` clean, `ruff format` clean.
 - All M0 tasks (M0-01 to M0-05) marked DONE. Transitioned to M1.
+
+### M1 Milestone Completed: Local Engine (2026-10-23)
+- Implemented `CsvImporter` with streaming, delimiter/BOM detection, resource limits, and ragged-row padding.
+- Implemented `JsonImporter` with nested dictionary flattening, JSON lines (NDJSON) support, and depth limits.
+- Implemented `Profiler` computing row/col counts, duplicate rows, missingness, distinct counts, min/max/mean, and type inference with uncertainty metrics.
+- Implemented allowlisted transformations in `transformations.py`: `trim_whitespace`, `normalize_headers`, `rename_column`, `reorder_columns`, `cast_type`, `fill_missing`, `drop_duplicates`, `filter_rows`, `drop_columns`, `select_columns`, `split_column`, `combine_columns`.
+- Implemented `TransformationRegistry` for single-step and multi-step pipeline execution.
+- Implemented `PreviewEngine` generating before-and-after slices with cell diff coordinates. Verified Rule 17 preview agreement with execution.
+- Implemented `CsvExporter` and `JsonExporter` with atomic replacement, destination conflict detection, source overwrite prevention, and safe CSV formula-injection neutralization.
+- Implemented `workbench` CLI with `profile`, `pipeline validate`, `transform`, and `export` commands.
+- Total 72 tests passing across unit, security, and CLI integration suites. Ruff linting and formatting 100% clean.
+- All M1 tasks (M1-01 to M1-07) marked DONE. Transitioned to M2.
 
 ## Update protocol
 
