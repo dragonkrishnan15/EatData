@@ -4,10 +4,10 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 
 ## Current phase
 
-**Phase:** M2 — Usable first interface  
-**Overall status:** TODO  
-**Current next task:** Evaluate UI shell and prototype primary workflow (M2-01).  
-**Last verified:** 2026-10-23 (72 unit, security, and CLI integration tests passing, ruff clean).
+**Phase:** M3 — Persistence and reproducibility  
+**Overall status:** IN_PROGRESS  
+**Current next task:** SQLite schema and migration strategy (M3-01).  
+**Last verified:** 2026-10-23 (86 unit, visualization, security, CLI, and UI integration tests passing, ruff clean).
 
 ## Task board
 
@@ -25,8 +25,8 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 | M1-05 | DONE | Implement preview and execution semantics | M1-04 | `PreviewEngine` implemented; verified preview agrees with execution in `test_preview.py`. |
 | M1-06 | DONE | Implement CSV/JSON export without source overwrite by default | M1-05 | `CsvExporter` & `JsonExporter` with atomic writes, formula injection defense tested. |
 | M1-07 | DONE | Build CLI profile/transform/export workflow | M1-03, M1-06 | `workbench` CLI implemented; integration tests in `test_cli.py` pass. |
-| M2-01 | TODO | Evaluate UI shell and prototype primary workflow | M1-07 | Decision recorded with trade-offs |
-| M2-02 | TODO | Implement import/profile/clean/preview/export UI | M2-01 | Primary journey tested |
+| M2-01 | DONE | Evaluate UI shell and prototype primary workflow | M1-07 | Recorded ADR-003 in `DECISIONS.md`. Self-contained offline desktop UI bound strictly to `127.0.0.1`. |
+| M2-02 | DONE | Implement import/profile/clean/preview/export UI | M2-01 | Built `app.html`, `server.py`, `ChartDataService`, wired `workbench ui` command. Integration tested in `test_ui_server.py`. |
 | M3-01 | TODO | Add SQLite schema and migration strategy | M1-07 | Migration and corruption tests pass |
 | M3-02 | TODO | Add pipeline history and retention controls | M3-01 | History contains no raw rows or secrets |
 | M4-01 | TODO | Define metadata allowlist and payload preview | M1-03 | Tests prove excluded values never appear |
@@ -71,6 +71,16 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 - Implemented `workbench` CLI with `profile`, `pipeline validate`, `transform`, and `export` commands.
 - Total 72 tests passing across unit, security, and CLI integration suites. Ruff linting and formatting 100% clean.
 - All M1 tasks (M1-01 to M1-07) marked DONE. Transitioned to M2.
+
+### M2 Milestone Completed: Usable First Interface (2026-10-23)
+- Recorded ADR-003 in `DECISIONS.md` selecting a loopback-bound (`127.0.0.1`) self-contained single-page desktop UI (zero external CDN or internet dependencies).
+- Implemented `ChartSpec` and `ChartDataService` in `src/workbench/visualization/` supporting bar, histogram, line, scatter, and missingness visualizations on aggregated metrics.
+- Built responsive dark-themed desktop single-page application in `src/workbench/ui/app.html` with dataset overview, quality summary badges, interactive data table with modified cell diff highlights, column profiling, transformation pipeline builder, and distribution charts.
+- Implemented `WorkbenchServer` in `src/workbench/ui/server.py` using Python `http.server` strictly bound to `127.0.0.1` (rejecting external interfaces to enforce Rule 10), with REST endpoints for import, profiling, prospective preview diffs, pipeline transformations, chart aggregations, and safe exports.
+- Added `workbench ui [--port 8080] [--no-browser]` command to CLI with auto-browser launch option.
+- Implemented unit tests for chart data service (`tests/unit/visualization/test_chart_data.py`) and full integration tests for UI server (`tests/integration/test_ui_server.py`).
+- 86 tests passing, ruff lint and format 100% clean.
+- All M2 tasks (M2-01 and M2-02) marked DONE. Transitioned to M3.
 
 ## Update protocol
 

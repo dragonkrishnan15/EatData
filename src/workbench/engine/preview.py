@@ -30,6 +30,18 @@ class PreviewResult:
     is_exact: bool = True
     reports: list[OperationReport] = field(default_factory=list)
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "before_columns": self.before_columns,
+            "after_columns": self.after_columns,
+            "before_rows": [list(r) for r in self.before_rows],
+            "after_rows": [list(r) for r in self.after_rows],
+            "modified_cells": self.modified_cells,
+            "rows_affected": self.rows_affected,
+            "is_exact": self.is_exact,
+            "reports": [r.to_dict() for r in self.reports],
+        }
+
 
 class PreviewEngine:
     """Generates deterministic previews for single operations and multi-step pipelines."""

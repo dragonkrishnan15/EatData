@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EatData — Offline Data Workbench</title>
+  <style>
+    :root {
+      --bg-base: #121417;
+      --bg-surface: #1a1d21;
+      --bg-surface-elevated: #22262b;
+      --bg-surface-hover: #2a2f35;
+      --border-color: #2e343b;
+      --text-primary: #f0f3f6;
+      --text-secondary: #9ba3af;
+      --text-muted: #6b7280;
+      --accent-blue: #3b82f6;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #ef4444;
+      --diff-highlight: rgba(59, 130, 246, 0.2);
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    header {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+    .badge-offline {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn {
+      background: var(--bg-surface-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn:hover { background: var(--bg-surface-hover); }
+    .btn-primary {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: var(--accent-rose);
+    }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+    .main-layout {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 320px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .sidebar-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .sidebar-section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg-base);
+    }
+    .nav-tabs {
+      display: flex;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0 16px;
+      gap: 4px;
+    }
+    .nav-tab {
+      padding: 10px 16px;
+      cursor: pointer;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s ease;
+    }
+    .nav-tab.active {
+      color: var(--text-primary);
+      border-bottom-color: var(--accent-blue);
+    }
+    .tab-content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: none;
+    }
+    .tab-content.active { display: block; }
+
+    /* Tables */
+    .table-container {
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      overflow: auto;
+      background: var(--bg-surface);
+      max-height: 500px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      text-align: left;
+    }
+    th {
+      background: var(--bg-surface-elevated);
+      color: var(--text-secondary);
+      padding: 8px 12px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--border-color);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+    tr:hover td { background: var(--bg-surface-hover); }
+    td.cell-modified {
+      background: var(--diff-highlight) !important;
+      color: #93c5fd;
+      font-weight: 500;
+    }
+
+    /* Cards & Stats */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 500;
+    }
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--text-primary);
+    }
+
+    /* Pipeline step list */
+    .pipeline-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .pipeline-step {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .step-name {
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .step-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Charts */
+    .chart-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .chart-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .chart-bar-label { width: 140px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+    .chart-bar-track {
+      flex: 1;
+      height: 18px;
+      background: var(--bg-surface-elevated);
+      border-radius: 3px;
+      overflow: hidden;
+      position: relative;
+    }
+    .chart-bar-fill {
+      height: 100%;
+      background: var(--accent-blue);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+    .chart-bar-val { width: 60px; text-align: right; color: var(--text-secondary); }
+
+    /* Forms */
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+    .form-input, .form-select {
+      width: 100%;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 6px 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      outline: none;
+    }
+    .form-input:focus, .form-select:focus {
+      border-color: var(--accent-blue);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span>EatData Workbench</span>
+      <span class="badge-offline">Local Engine Offline</span>
+    </div>
+    <div class="header-actions">
+      <input type="file" id="fileInput" style="display:none" accept=".csv,.tsv,.json,.ndjson" onchange="handleFileSelected(this)">
+      <button class="btn" onclick="document.getElementById('fileInput').click()">Import File</button>
+      <button class="btn btn-primary" onclick="showExportModal()">Export Cleaned</button>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <!-- Sidebar: Controls & Pipeline -->
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Active Dataset</div>
+        <div id="datasetInfo" style="color:var(--text-secondary);">No dataset loaded. Click "Import File" to start.</div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-title">Add Transformation</div>
+        <div class="form-group">
+          <label class="form-label">Operation</label>
+          <select id="opSelect" class="form-select" onchange="handleOpSelectionChange()">
+            <option value="trim_whitespace">Trim Whitespace</option>
+            <option value="normalize_headers">Normalize Headers (snake_case)</option>
+            <option value="drop_duplicates">Drop Duplicate Rows</option>
+            <option value="rename_column">Rename Column</option>
+            <option value="fill_missing">Fill Missing Values</option>
+            <option value="cast_type">Cast Column Type</option>
+            <option value="filter_rows">Filter Rows</option>
+            <option value="drop_columns">Drop Column</option>
+          </select>
+        </div>
+        <div id="opParamsContainer">
+          <!-- Dynamic parameter inputs rendered here -->
+        </div>
+        <button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="addAndApplyOperation()">Apply Operation</button>
+      </div>
+
+      <div class="sidebar-section" style="flex:1; overflow-y:auto;">
+        <div class="sidebar-section-title">Pipeline Steps (<span id="pipelineCount">0</span>)</div>
+        <div id="pipelineList" class="pipeline-list">
+          <div style="color:var(--text-muted); font-size:11px;">No transformation steps applied yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="content-area">
+      <div class="nav-tabs">
+        <div class="nav-tab active" onclick="switchTab('dataTab')">Data Table & Diff</div>
+        <div class="nav-tab" onclick="switchTab('profileTab')">Quality Profile</div>
+        <div class="nav-tab" onclick="switchTab('visualizeTab')">Visualizations</div>
+      </div>
+
+      <!-- Tab 1: Data Table & Diff -->
+      <div id="dataTab" class="tab-content active">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Rows</div>
+            <div id="statRows" class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Columns</div>
+            <div id="statCols" class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Duplicate Rows</div>
+            <div id="statDuplicates" class="stat-value">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Missing Values</div>
+            <div id="statNulls" class="stat-value">0</div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h3 style="font-size:14px; font-weight:600;">Data Preview (First 50 Rows)</h3>
+          <span style="font-size:11px; color:var(--text-muted);">Blue tinted cells indicate modified values</span>
+        </div>
+        <div class="table-container">
+          <table id="dataTable">
+            <thead id="dataThead"></thead>
+            <tbody id="dataTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab 2: Profile -->
+      <div id="profileTab" class="tab-content">
+        <div style="margin-bottom:14px;">
+          <h3 style="font-size:14px; font-weight:600;">Column-Level Quality Indicators</h3>
+        </div>
+        <div class="table-container">
+          <table id="profileTable">
+            <thead>
+              <tr>
+                <th>Column Name</th>
+                <th>Inferred Type</th>
+                <th>Confidence</th>
+                <th>Missing Count</th>
+                <th>Missing %</th>
+                <th>Distinct Values</th>
+                <th>Min</th>
+                <th>Max</th>
+                <th>Mean</th>
+                <th>Patterns</th>
+              </tr>
+            </thead>
+            <tbody id="profileTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab 3: Visualizations -->
+      <div id="visualizeTab" class="tab-content">
+        <div class="chart-box">
+          <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+            <h4 style="font-size:13px; font-weight:600;">Missing Values Overview</h4>
+          </div>
+          <div id="missingnessChartContainer"></div>
+        </div>
+
+        <div class="chart-box">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h4 style="font-size:13px; font-weight:600;">Distribution Bar Chart</h4>
+            <div style="display:flex; gap:8px;">
+              <select id="chartColSelect" class="form-select" style="width:180px;" onchange="renderSelectedColumnChart()"></select>
+            </div>
+          </div>
+          <div id="barChartContainer"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentDataset = null;
+    let currentProfile = null;
+    let activePipeline = { steps: [] };
+    let modifiedCellSet = new Set();
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    async function handleFileSelected(input) {
+      if (!input.files || input.files.length === 0) return;
+      const file = input.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/import', { method: 'POST', body: formData });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Import Error: ' + (err.message || 'Failed to import file.'));
+          return;
+        }
+        const data = await res.json();
+        currentDataset = data.dataset;
+        currentProfile = data.profile;
+        activePipeline = { steps: [] };
+        modifiedCellSet.clear();
+
+        updateUI();
+      } catch (err) {
+        alert('Network or server error during import: ' + err);
+      }
+    }
+
+    function updateUI() {
+      if (!currentDataset || !currentProfile) return;
+
+      // Dataset info
+      document.getElementById('datasetInfo').innerHTML = `
+        <div style="font-weight:600; color:var(--text-primary); font-size:13px;">${currentDataset.name}</div>
+        <div style="font-size:11px; margin-top:2px;">${currentProfile.row_count} rows &bull; ${currentProfile.column_count} columns</div>
+      `;
+
+      // Stats
+      document.getElementById('statRows').textContent = currentProfile.row_count;
+      document.getElementById('statCols').textContent = currentProfile.column_count;
+      document.getElementById('statDuplicates').textContent = currentProfile.duplicate_row_count;
+      document.getElementById('statNulls').textContent = currentProfile.total_null_count;
+
+      // Render Data Table
+      const thead = document.getElementById('dataThead');
+      const tbody = document.getElementById('dataTbody');
+      thead.innerHTML = '<tr>' + currentDataset.columns.map(c => `<th>${c.name}</th>`).join('') + '</tr>';
+
+      tbody.innerHTML = currentDataset.rows.slice(0, 50).map((row, rIdx) => {
+        return '<tr>' + row.map((val, cIdx) => {
+          const isMod = modifiedCellSet.has(`${rIdx},${cIdx}`);
+          const displayVal = (val === null || val === '') ? '<span style="color:var(--text-muted);">&lt;null&gt;</span>' : val;
+          return `<td class="${isMod ? 'cell-modified' : ''}">${displayVal}</td>`;
+        }).join('') + '</tr>';
+      }).join('');
+
+      // Render Profile Table
+      const profTbody = document.getElementById('profileTbody');
+      profTbody.innerHTML = Object.values(currentProfile.columns).map(col => {
+        return `<tr>
+          <td><strong>${col.name}</strong></td>
+          <td><span style="background:var(--bg-surface-elevated); padding:2px 6px; border-radius:4px;">${col.inferred_type}</span></td>
+          <td>${Math.round(col.type_confidence * 100)}%</td>
+          <td>${col.null_count + col.empty_string_count}</td>
+          <td>${col.null_percentage}%</td>
+          <td>${col.distinct_count}</td>
+          <td>${col.min_value !== null ? col.min_value : '-'}</td>
+          <td>${col.max_value !== null ? col.max_value : '-'}</td>
+          <td>${col.mean_value !== null ? col.mean_value : '-'}</td>
+          <td>${col.sample_categories.join(', ') || '-'}</td>
+        </tr>`;
+      }).join('');
+
+      // Populate column selectors
+      const chartSelect = document.getElementById('chartColSelect');
+      chartSelect.innerHTML = currentDataset.columns.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+
+      // Render pipeline list
+      renderPipelineList();
+
+      // Render charts
+      renderMissingnessChart();
+      renderSelectedColumnChart();
+      handleOpSelectionChange();
+    }
+
+    function renderPipelineList() {
+      const container = document.getElementById('pipelineList');
+      document.getElementById('pipelineCount').textContent = activePipeline.steps.length;
+      if (activePipeline.steps.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:11px;">No transformation steps applied yet.</div>';
+        return;
+      }
+      container.innerHTML = activePipeline.steps.map((st, i) => `
+        <div class="pipeline-step">
+          <div>
+            <div class="step-name">${i + 1}. ${st.name}</div>
+            <div class="step-desc">${st.columns && st.columns.length ? st.columns.join(', ') : 'All columns'}</div>
+          </div>
+          <button class="btn btn-danger" style="padding:2px 6px; font-size:11px;" onclick="removePipelineStep(${i})">&times;</button>
+        </div>
+      `).join('');
+    }
+
+    function handleOpSelectionChange() {
+      const op = document.getElementById('opSelect').value;
+      const container = document.getElementById('opParamsContainer');
+      const cols = currentDataset ? currentDataset.columns.map(c => c.name) : [];
+      const colOptions = cols.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      if (op === 'trim_whitespace' || op === 'drop_duplicates' || op === 'normalize_headers') {
+        container.innerHTML = `<div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Applies to all applicable columns.</div>`;
+      } else if (op === 'rename_column') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Column</label>
+            <select id="paramCol" class="form-select">${colOptions}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Column Name</label>
+            <input type="text" id="paramNewName" class="form-input" placeholder="e.g. user_id">
+          </div>
+        `;
+      } else if (op === 'fill_missing') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Column</label>
+            <select id="paramCol" class="form-select">${colOptions}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Strategy</label>
+            <select id="paramStrategy" class="form-select" onchange="toggleFillValue(this.value)">
+              <option value="constant">Constant Value</option>
+              <option value="mean">Mean (numeric)</option>
+              <option value="median">Median (numeric)</option>
+              <option value="mode">Mode (most frequent)</option>
+              <option value="forward_fill">Forward Fill</option>
+              <option value="backward_fill">Backward Fill</option>
+            </select>
+          </div>
+          <div class="form-group" id="fillValGroup">
+            <label class="form-label">Replacement Value</label>
+            <input type="text" id="paramFillValue" class="form-input" value="0">
+          </div>
+        `;
+      } else if (op === 'cast_type') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Column</label>
+            <select id="paramCol" class="form-select">${colOptions}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Target Data Type</label>
+            <select id="paramTargetType" class="form-select">
+              <option value="integer">Integer</option>
+              <option value="float">Float</option>
+              <option value="string">String</option>
+              <option value="boolean">Boolean</option>
+              <option value="date">Date</option>
+            </select>
+          </div>
+        `;
+      } else if (op === 'filter_rows') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Column</label>
+            <select id="paramCol" class="form-select">${colOptions}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Operator</label>
+            <select id="paramOperator" class="form-select">
+              <option value="not_null">Is Not Null / Non-empty</option>
+              <option value="is_null">Is Null / Empty</option>
+              <option value="==">Equals (==)</option>
+              <option value="!=">Not Equals (!=)</option>
+              <option value="contains">Contains text</option>
+              <option value=">">Greater than (&gt;)</option>
+              <option value="<">Less than (&lt;)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Compare Value</label>
+            <input type="text" id="paramFilterVal" class="form-input" placeholder="e.g. active or 100">
+          </div>
+        `;
+      } else if (op === 'drop_columns') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Column to Drop</label>
+            <select id="paramCol" class="form-select">${colOptions}</select>
+          </div>
+        `;
+      }
+    }
+
+    function toggleFillValue(strategy) {
+      const g = document.getElementById('fillValGroup');
+      if (g) g.style.display = strategy === 'constant' ? 'block' : 'none';
+    }
+
+    async function addAndApplyOperation() {
+      if (!currentDataset) {
+        alert('Please import a dataset first.');
+        return;
+      }
+      const opName = document.getElementById('opSelect').value;
+      const step = { name: opName, columns: [], parameters: {} };
+
+      if (opName === 'rename_column') {
+        step.columns = [document.getElementById('paramCol').value];
+        step.parameters.new_name = document.getElementById('paramNewName').value.trim();
+        if (!step.parameters.new_name) { alert('New column name required.'); return; }
+      } else if (opName === 'fill_missing') {
+        step.columns = [document.getElementById('paramCol').value];
+        const strat = document.getElementById('paramStrategy').value;
+        step.parameters.strategy = strat;
+        if (strat === 'constant') step.parameters.value = document.getElementById('paramFillValue').value;
+      } else if (opName === 'cast_type') {
+        step.columns = [document.getElementById('paramCol').value];
+        step.parameters.target_type = document.getElementById('paramTargetType').value;
+        step.parameters.error_strategy = 'coerce_null';
+      } else if (opName === 'filter_rows') {
+        step.columns = [document.getElementById('paramCol').value];
+        step.parameters.operator = document.getElementById('paramOperator').value;
+        step.parameters.value = document.getElementById('paramFilterVal').value;
+      } else if (opName === 'drop_columns') {
+        step.columns = [document.getElementById('paramCol').value];
+      }
+
+      // Add to pipeline
+      activePipeline.steps.push(step);
+
+      try {
+        // Execute pipeline via API
+        const res = await fetch('/api/transform', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataset: currentDataset, pipeline: activePipeline })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Transformation Error: ' + err.message);
+          activePipeline.steps.pop();
+          return;
+        }
+        const data = await res.json();
+        currentDataset = data.dataset;
+        currentProfile = data.profile;
+
+        // Fetch diff preview
+        const prevRes = await fetch('/api/preview', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataset: currentDataset, operation: step })
+        });
+        if (prevRes.ok) {
+          const prevData = await prevRes.json();
+          modifiedCellSet.clear();
+          prevData.modified_cells.forEach(coord => modifiedCellSet.add(`${coord[0]},${coord[1]}`));
+        }
+
+        updateUI();
+      } catch (err) {
+        alert('Server error: ' + err);
+      }
+    }
+
+    async function removePipelineStep(index) {
+      activePipeline.steps.splice(index, 1);
+      // Re-run pipeline from beginning or re-render
+      renderPipelineList();
+    }
+
+    async function renderMissingnessChart() {
+      if (!currentDataset) return;
+      try {
+        const res = await fetch('/api/chart', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dataset: currentDataset,
+            spec: { chart_type: 'missingness', title: 'Missing Values' }
+          })
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const container = document.getElementById('missingnessChartContainer');
+        container.innerHTML = data.labels.map((lbl, i) => {
+          const pct = data.percentages[i];
+          const cnt = data.counts[i];
+          return `
+            <div class="chart-bar-row">
+              <div class="chart-bar-label" title="${lbl}">${lbl}</div>
+              <div class="chart-bar-track">
+                <div class="chart-bar-fill" style="width:${pct}%; background: ${pct > 0 ? 'var(--accent-amber)' : 'var(--accent-emerald)'};"></div>
+              </div>
+              <div class="chart-bar-val">${cnt} (${pct}%)</div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function renderSelectedColumnChart() {
+      const col = document.getElementById('chartColSelect').value;
+      if (!currentDataset || !col) return;
+
+      try {
+        const res = await fetch('/api/chart', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dataset: currentDataset,
+            spec: { chart_type: 'bar', x_column: col, max_bins: 15, title: `Distribution: ${col}` }
+          })
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const maxVal = Math.max(...data.values, 1);
+        const container = document.getElementById('barChartContainer');
+        container.innerHTML = data.labels.map((lbl, i) => {
+          const val = data.values[i];
+          const pct = Math.round((val / maxVal) * 100);
+          return `
+            <div class="chart-bar-row">
+              <div class="chart-bar-label" title="${lbl}">${lbl}</div>
+              <div class="chart-bar-track">
+                <div class="chart-bar-fill" style="width:${pct}%;"></div>
+              </div>
+              <div class="chart-bar-val">${val}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function showExportModal() {
+      if (!currentDataset) { alert('No dataset to export.'); return; }
+      const filename = prompt('Enter export filename (e.g. cleaned_output.csv or output.json):', `${currentDataset.name}_cleaned.csv`);
+      if (!filename) return;
+
+      try {
+        const res = await fetch('/api/export', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataset: currentDataset, filename: filename, overwrite: true })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Export Error: ' + err.message);
+          return;
+        }
+        const data = await res.json();
+        alert(`Successfully exported ${data.rows_exported} rows to:\n${data.destination_path}`);
+      } catch (err) {
+        alert('Server error: ' + err);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -31,6 +31,17 @@ class OperationReport:
     columns_affected: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "operation_id": self.operation_id,
+            "operation_name": self.operation_name,
+            "rows_before": self.rows_before,
+            "rows_after": self.rows_after,
+            "rows_affected": self.rows_affected,
+            "columns_affected": self.columns_affected,
+            "warnings": self.warnings,
+        }
+
 
 def transform_trim_whitespace(dataset: Dataset, op: Operation) -> tuple[Dataset, OperationReport]:
     target_cols = op.columns or dataset.column_names

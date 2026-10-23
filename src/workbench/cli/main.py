@@ -169,6 +169,31 @@ def cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ui(args: argparse.Namespace) -> int:
+    import webbrowser
+
+    from workbench.ui.server import WorkbenchServer
+
+    port = int(args.port)
+    server = WorkbenchServer(host="127.0.0.1", port=port)
+    server.start()
+    url = f"http://127.0.0.1:{server.port}"
+    sys.stdout.write(f"\nEatData Offline Workbench UI running at:\n  {url}\n\n")
+    sys.stdout.write("Press Ctrl+C to stop.\n")
+    if not getattr(args, "no_browser", False):
+        try:
+            webbrowser.open(url)
+        except Exception:
+            pass
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        sys.stdout.write("\nShutting down EatData Workbench.\n")
+    finally:
+        server.shutdown()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="workbench",
@@ -208,6 +233,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--overwrite", action="store_true", help="Allow overwrite of output file."
     )
     p_export.set_defaults(func=cmd_export)
+
+    # ui
+    p_ui = subparsers.add_parser("ui", help="Launch the local desktop UI.")
+    p_ui.add_argument("--port", type=int, default=8080, help="Local port to bind (default: 8080).")
+    p_ui.add_argument(
+        "--no-browser", action="store_true", help="Do not automatically launch web browser."
+    )
+    p_ui.set_defaults(func=cmd_ui)
 
     return parser
 

@@ -68,6 +68,13 @@ class ResourceLimitError(WorkbenchError):
         super().__init__(message, code="RESOURCE_LIMIT_EXCEEDED", details=details)
 
 
+class SecurityError(WorkbenchError):
+    """Raised when an operation violates local security or privacy invariants."""
+
+    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
+        super().__init__(message, code="SECURITY_ERROR", details=details)
+
+
 class ProviderUnavailableError(WorkbenchError):
     """Raised when an external or local AI provider endpoint is unreachable or disabled."""
 

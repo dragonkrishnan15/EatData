@@ -144,6 +144,28 @@ class Dataset:
             rows=rows,
         )
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize dataset schema and rows into a dictionary."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "columns": [c.to_dict() for c in self.columns],
+            "rows": [list(r) for r in self.rows],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Dataset:
+        """Deserialize dataset from dictionary."""
+        columns = [ColumnMetadata.from_dict(c) for c in data.get("columns", [])]
+        raw_rows = data.get("rows", [])
+        rows = [tuple(r) for r in raw_rows]
+        return cls(
+            id=str(data.get("id", uuid.uuid4())),
+            name=str(data.get("name", "untitled")),
+            columns=columns,
+            rows=rows,
+        )
+
     def __repr__(self) -> str:
         # STRICT PRIVACY: Never expose row contents or values in string representation
         cols_summary = self.column_names
