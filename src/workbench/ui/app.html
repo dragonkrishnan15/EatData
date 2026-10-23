@@ -6,22 +6,61 @@
   <title>EatData — Offline Data Workbench</title>
   <style>
     :root {
-      --bg-base: #121417;
-      --bg-surface: #1a1d21;
-      --bg-surface-elevated: #22262b;
-      --bg-surface-hover: #2a2f35;
-      --border-color: #2e343b;
-      --text-primary: #f0f3f6;
-      --text-secondary: #9ba3af;
-      --text-muted: #6b7280;
+      --bg-base: #0f141c;
+      --bg-surface: #161d27;
+      --bg-surface-elevated: #1e2735;
+      --bg-surface-hover: #263244;
+      --border-color: #2b384c;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
       --accent-blue: #3b82f6;
+      --accent-blue-hover: #2563eb;
       --accent-emerald: #10b981;
       --accent-amber: #f59e0b;
       --accent-rose: #ef4444;
-      --diff-highlight: rgba(59, 130, 246, 0.2);
+      --diff-highlight: rgba(59, 130, 246, 0.18);
+      --diff-border: rgba(59, 130, 246, 0.45);
+      --diff-dot: #60a5fa;
       --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --cell-padding: 7px 12px;
+      --table-font-size: 12px;
     }
+
+    body.theme-light {
+      --bg-base: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-surface-elevated: #f1f5f9;
+      --bg-surface-hover: #e2e8f0;
+      --border-color: #cbd5e1;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --diff-highlight: rgba(59, 130, 246, 0.14);
+      --diff-border: rgba(59, 130, 246, 0.4);
+      --diff-dot: #2563eb;
+    }
+
+    body.theme-slate {
+      --bg-base: #18181b;
+      --bg-surface: #27272a;
+      --bg-surface-elevated: #3f3f46;
+      --bg-surface-hover: #52525b;
+      --border-color: #52525b;
+      --text-primary: #fafafa;
+      --text-secondary: #d4d4d8;
+      --text-muted: #a1a1aa;
+      --diff-highlight: rgba(99, 102, 241, 0.22);
+      --diff-border: rgba(99, 102, 241, 0.5);
+      --diff-dot: #818cf8;
+    }
+
+    body.density-compact {
+      --cell-padding: 4px 8px;
+      --table-font-size: 11px;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       background-color: var(--bg-base);
@@ -33,21 +72,24 @@
       flex-direction: column;
       height: 100vh;
       overflow: hidden;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
+
     header {
       background: var(--bg-surface);
       border-bottom: 1px solid var(--border-color);
-      padding: 10px 20px;
+      padding: 8px 18px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-shrink: 0;
+      gap: 12px;
     }
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-size: 15px;
+      gap: 10px;
+      font-size: 14px;
       font-weight: 600;
       letter-spacing: -0.3px;
     }
@@ -63,13 +105,13 @@
     .header-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
     }
     .btn {
       background: var(--bg-surface-elevated);
       color: var(--text-primary);
       border: 1px solid var(--border-color);
-      padding: 6px 14px;
+      padding: 5px 12px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 12px;
@@ -78,20 +120,25 @@
       align-items: center;
       gap: 6px;
       transition: all 0.15s ease;
+      white-space: nowrap;
     }
-    .btn:hover { background: var(--bg-surface-hover); }
+    .btn:hover:not(:disabled) { background: var(--bg-surface-hover); }
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
     .btn-primary {
       background: var(--accent-blue);
       border-color: var(--accent-blue);
       color: #fff;
     }
-    .btn-primary:hover { background: #2563eb; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-blue-hover); }
     .btn-danger {
       background: rgba(239, 68, 68, 0.15);
       border-color: rgba(239, 68, 68, 0.3);
       color: var(--accent-rose);
     }
-    .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+    .btn-danger:hover:not(:disabled) { background: rgba(239, 68, 68, 0.25); }
 
     .main-layout {
       display: flex;
@@ -107,7 +154,7 @@
       flex-shrink: 0;
     }
     .sidebar-section {
-      padding: 16px;
+      padding: 14px;
       border-bottom: 1px solid var(--border-color);
     }
     .sidebar-section-title {
@@ -116,7 +163,7 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: var(--text-muted);
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
     .content-area {
       flex: 1;
@@ -133,12 +180,14 @@
       gap: 4px;
     }
     .nav-tab {
-      padding: 10px 16px;
+      padding: 9px 14px;
       cursor: pointer;
       font-weight: 500;
+      font-size: 12px;
       color: var(--text-secondary);
       border-bottom: 2px solid transparent;
       transition: all 0.15s ease;
+      white-space: nowrap;
     }
     .nav-tab.active {
       color: var(--text-primary);
@@ -146,11 +195,35 @@
     }
     .tab-content {
       flex: 1;
-      padding: 20px;
+      padding: 16px 20px;
       overflow-y: auto;
       display: none;
     }
     .tab-content.active { display: block; }
+
+    /* Table Toolbar */
+    .table-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .table-search-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      max-width: 320px;
+    }
+    .pagination-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
 
     /* Tables */
     .table-container {
@@ -158,64 +231,115 @@
       border-radius: 6px;
       overflow: auto;
       background: var(--bg-surface);
-      max-height: 500px;
+      max-height: calc(100vh - 275px);
     }
     table {
       width: 100%;
       border-collapse: collapse;
       font-family: var(--font-mono);
-      font-size: 12px;
+      font-size: var(--table-font-size);
       text-align: left;
     }
     th {
       background: var(--bg-surface-elevated);
       color: var(--text-secondary);
-      padding: 8px 12px;
+      padding: var(--cell-padding);
       font-weight: 600;
       border-bottom: 1px solid var(--border-color);
       position: sticky;
       top: 0;
-      z-index: 1;
+      z-index: 2;
+      user-select: none;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    th:hover {
+      background: var(--bg-surface-hover);
+      color: var(--text-primary);
+    }
+    th .sort-glyph {
+      margin-left: 4px;
+      color: var(--accent-blue);
+      font-size: 10px;
     }
     td {
-      padding: 7px 12px;
+      padding: var(--cell-padding);
       border-bottom: 1px solid var(--border-color);
       white-space: nowrap;
+      position: relative;
     }
     tr:hover td { background: var(--bg-surface-hover); }
     td.cell-modified {
       background: var(--diff-highlight) !important;
-      color: #93c5fd;
       font-weight: 500;
+    }
+    td.cell-modified::before {
+      content: "";
+      position: absolute;
+      left: 2px;
+      top: 4px;
+      bottom: 4px;
+      width: 2px;
+      background: var(--diff-dot);
+      border-radius: 1px;
     }
 
     /* Cards & Stats */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .stat-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
       border-radius: 6px;
-      padding: 14px;
+      padding: 12px 14px;
     }
     .stat-label {
       font-size: 11px;
       color: var(--text-muted);
       text-transform: uppercase;
-      font-weight: 500;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
     }
     .stat-value {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 700;
-      margin-top: 4px;
       color: var(--text-primary);
+      font-family: var(--font-mono);
     }
 
-    /* Pipeline step list */
+    /* Form controls */
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .form-select, .form-input {
+      width: 100%;
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: inherit;
+    }
+    .form-select:focus, .form-input:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+
+    /* Pipeline Step Cards */
     .pipeline-list {
       display: flex;
       flex-direction: column;
@@ -225,18 +349,85 @@
       background: var(--bg-surface-elevated);
       border: 1px solid var(--border-color);
       border-radius: 6px;
-      padding: 10px;
+      padding: 8px 10px;
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .pipeline-step.disabled {
+      opacity: 0.5;
+      border-style: dashed;
+    }
+    .step-info {
+      flex: 1;
+      overflow: hidden;
     }
     .step-name {
       font-weight: 600;
       font-size: 12px;
+      color: var(--text-primary);
     }
     .step-desc {
       font-size: 11px;
       color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .step-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Modal dialog */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.65);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      backdrop-filter: blur(2px);
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      width: 520px;
+      max-width: 92vw;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .modal-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .modal-body {
+      padding: 18px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .modal-footer {
+      padding: 12px 18px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      background: var(--bg-surface-elevated);
     }
 
     /* Charts */
@@ -245,24 +436,29 @@
       border: 1px solid var(--border-color);
       border-radius: 6px;
       padding: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
     .chart-bar-row {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       margin-bottom: 8px;
-      font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: 12px;
     }
-    .chart-bar-label { width: 140px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+    .chart-bar-label {
+      width: 150px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
     .chart-bar-track {
       flex: 1;
       height: 18px;
       background: var(--bg-surface-elevated);
       border-radius: 3px;
       overflow: hidden;
-      position: relative;
     }
     .chart-bar-fill {
       height: 100%;
@@ -270,45 +466,44 @@
       border-radius: 3px;
       transition: width 0.3s ease;
     }
-    .chart-bar-val { width: 60px; text-align: right; color: var(--text-secondary); }
-
-    /* Forms */
-    .form-group {
-      margin-bottom: 12px;
-    }
-    .form-label {
-      display: block;
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--text-secondary);
-      margin-bottom: 4px;
-    }
-    .form-input, .form-select {
-      width: 100%;
-      background: var(--bg-surface-elevated);
-      border: 1px solid var(--border-color);
+    .chart-bar-val {
+      width: 75px;
+      text-align: right;
+      font-family: var(--font-mono);
       color: var(--text-primary);
-      padding: 6px 10px;
-      border-radius: 5px;
-      font-size: 12px;
-      outline: none;
-    }
-    .form-input:focus, .form-select:focus {
-      border-color: var(--accent-blue);
+      font-size: 11px;
     }
   </style>
 </head>
-<body>
+<body class="theme-dark density-comfortable">
   <header>
     <div class="brand">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
       <span>EatData Workbench</span>
       <span class="badge-offline">Local Engine Offline</span>
     </div>
     <div class="header-actions">
-      <button class="btn" onclick="loadDemoDataset()">Load Sample Data</button>
-      <input type="file" id="fileInput" style="display:none" accept=".csv,.tsv,.json,.ndjson" onchange="handleFileSelected(this)">
+      <!-- Undo / Redo -->
+      <button id="btnUndo" class="btn" title="Undo transformation (Ctrl+Z)" onclick="undoStep()" disabled>
+        <span>&larr; Undo</span>
+      </button>
+      <button id="btnRedo" class="btn" title="Redo transformation (Ctrl+Y)" onclick="redoStep()" disabled>
+        <span>Redo &rarr;</span>
+      </button>
+
+      <div style="width:1px; height:18px; background:var(--border-color); margin:0 4px;"></div>
+
+      <button class="btn" onclick="openPipelinesModal()">Pipelines</button>
+      <button class="btn" onclick="loadDemoDataset()">Sample Data</button>
+      <input type="file" id="fileInput" style="display:none" accept=".csv,.tsv,.txt,.json,.ndjson,.jsonl,.xlsx,.xlsm" onchange="handleFileSelected(this)">
       <button class="btn" onclick="document.getElementById('fileInput').click()">Import File</button>
-      <button class="btn btn-primary" onclick="showExportModal()">Export Cleaned</button>
+      <button class="btn btn-primary" onclick="showExportModal()">Export</button>
+
+      <button class="btn" title="Appearance and Layout Settings" onclick="openSettingsModal()">
+        &#9881;
+      </button>
     </div>
   </header>
 
@@ -317,7 +512,9 @@
     <div class="sidebar">
       <div class="sidebar-section">
         <div class="sidebar-section-title">Active Dataset</div>
-        <div id="datasetInfo" style="color:var(--text-secondary);">No dataset loaded. Click "Import File" or "Load Sample Data" to start.</div>
+        <div id="datasetInfo" style="color:var(--text-secondary); font-size:12px;">
+          No dataset loaded. Click "Import File" (.csv, .json, .xlsx) or "Sample Data" to start.
+        </div>
       </div>
 
       <div class="sidebar-section">
@@ -341,9 +538,12 @@
         <button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="addAndApplyOperation()">Apply Operation</button>
       </div>
 
-      <div class="sidebar-section" style="flex:1; overflow-y:auto;">
-        <div class="sidebar-section-title">Pipeline Steps (<span id="pipelineCount">0</span>)</div>
-        <div id="pipelineList" class="pipeline-list">
+      <div class="sidebar-section" style="flex:1; overflow-y:auto; display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div class="sidebar-section-title" style="margin-bottom:0;">Pipeline (<span id="pipelineCount">0</span>)</div>
+          <button class="btn" style="padding:2px 8px; font-size:10px;" onclick="promptSaveCurrentPipeline()" title="Save current pipeline to SQLite">Save</button>
+        </div>
+        <div id="pipelineList" class="pipeline-list" style="flex:1;">
           <div style="color:var(--text-muted); font-size:11px;">No transformation steps applied yet.</div>
         </div>
       </div>
@@ -380,21 +580,41 @@
           </div>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <h3 style="font-size:14px; font-weight:600;">Data Preview (First 50 Rows)</h3>
-          <span style="font-size:11px; color:var(--text-muted);">Blue tinted cells indicate modified values</span>
+        <div class="table-toolbar">
+          <div class="table-search-box">
+            <input type="text" id="tableFilterInput" class="form-input" placeholder="Filter rows across columns..." oninput="handleTableSearch(this.value)">
+            <span id="filterCountBadge" style="font-size:11px; color:var(--text-muted); white-space:nowrap;"></span>
+          </div>
+
+          <div class="pagination-bar">
+            <span>Rows per page:</span>
+            <select id="pageSizeSelect" class="form-select" style="width:70px; padding:3px 6px;" onchange="changePageSize(this.value)">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="all">All</option>
+            </select>
+            <button class="btn" style="padding:2px 8px;" onclick="prevPage()" id="btnPrevPage" disabled>&lsaquo; Prev</button>
+            <span id="pageIndicator" style="font-family:var(--font-mono);">Page 1 of 1</span>
+            <button class="btn" style="padding:2px 8px;" onclick="nextPage()" id="btnNextPage" disabled>Next &rsaquo;</button>
+          </div>
         </div>
+
         <div class="table-container">
           <table id="dataTable">
             <thead id="dataThead"></thead>
             <tbody id="dataTbody"></tbody>
           </table>
         </div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:8px; display:flex; justify-content:space-between;">
+          <span>Tip: Click column headers to sort. Blue cells indicate modified values relative to raw source.</span>
+          <span id="sortIndicatorBadge"></span>
+        </div>
       </div>
 
       <!-- Tab 2: Profile -->
       <div id="profileTab" class="tab-content">
-        <div style="margin-bottom:14px;">
+        <div style="margin-bottom:12px;">
           <h3 style="font-size:14px; font-weight:600;">Column-Level Quality Indicators</h3>
         </div>
         <div class="table-container">
@@ -498,12 +718,139 @@
     </div>
   </div>
 
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">Workbench Settings & Appearance</div>
+        <button class="btn" style="padding:2px 8px;" onclick="closeSettingsModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Theme</label>
+          <select id="prefTheme" class="form-select" onchange="applyTheme(this.value)">
+            <option value="theme-dark">Deep Carbon (Dark Default)</option>
+            <option value="theme-light">Studio Slate (Light)</option>
+            <option value="theme-slate">Zinc Dark (Slate)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Layout Density</label>
+          <select id="prefDensity" class="form-select" onchange="applyDensity(this.value)">
+            <option value="density-comfortable">Comfortable Spacing</option>
+            <option value="density-compact">Compact High-Density</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-top:16px; border-top:1px solid var(--border-color); padding-top:12px;">
+          <div style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">
+            Local State: Settings are saved in your browser's persistent offline storage.
+          </div>
+          <button class="btn btn-danger" onclick="resetPreferences()">Reset Preferences to Default</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeSettingsModal()">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pipelines Persistence Modal -->
+  <div id="pipelinesModal" class="modal-overlay">
+    <div class="modal-box" style="width:640px;">
+      <div class="modal-header">
+        <div class="modal-title">Saved Transformation Pipelines (SQLite)</div>
+        <button class="btn" style="padding:2px 8px;" onclick="closePipelinesModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:12px; color:var(--text-secondary);">Manage versioned pipelines saved in your local SQLite repository:</span>
+          <button class="btn btn-primary" onclick="promptSaveCurrentPipeline()">+ Save Current Pipeline</button>
+        </div>
+        <div id="savedPipelinesList" style="display:flex; flex-direction:column; gap:8px; max-height:360px; overflow-y:auto;">
+          <div style="color:var(--text-muted); font-size:12px; padding:12px 0;">Loading saved pipelines...</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closePipelinesModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    let currentDataset = null;
-    let currentProfile = null;
-    let activePipeline = { steps: [] };
+    // Global State
+    let rawBaselineDataset = null;  // Immutable baseline of the imported dataset
+    let currentDataset = null;      // Current transformed dataset
+    let currentProfile = null;      // Profile for current dataset
+    let activePipeline = { id: crypto.randomUUID ? crypto.randomUUID() : 'pipeline-1', name: 'Cleaning Pipeline', version: '1.0', steps: [] };
     let modifiedCellSet = new Set();
     let lastProposedAiPipeline = null;
+
+    // Undo / Redo Stacks
+    let undoStack = []; // array of pipeline steps snapshots
+    let redoStack = []; // array of pipeline steps snapshots
+
+    // Table view state
+    let tableSearchQuery = '';
+    let sortColumn = null;
+    let sortDirection = 'none'; // 'asc', 'desc', 'none'
+    let currentPage = 1;
+    let pageSize = 50; // or 'all'
+
+    // Preferences & Theme
+    function loadPreferences() {
+      try {
+        const raw = localStorage.getItem('eatdata_prefs');
+        if (raw) {
+          const prefs = JSON.parse(raw);
+          if (prefs.theme) applyTheme(prefs.theme, false);
+          if (prefs.density) applyDensity(prefs.density, false);
+        }
+      } catch (err) {
+        console.warn('Could not load preferences:', err);
+      }
+    }
+
+    function savePreferences() {
+      try {
+        const theme = document.body.classList.contains('theme-light') ? 'theme-light' :
+                      document.body.classList.contains('theme-slate') ? 'theme-slate' : 'theme-dark';
+        const density = document.body.classList.contains('density-compact') ? 'density-compact' : 'density-comfortable';
+        localStorage.setItem('eatdata_prefs', JSON.stringify({ theme, density }));
+      } catch (err) {
+        console.warn('Could not save preferences:', err);
+      }
+    }
+
+    function applyTheme(themeName, persist = true) {
+      document.body.classList.remove('theme-dark', 'theme-light', 'theme-slate');
+      document.body.classList.add(themeName);
+      const sel = document.getElementById('prefTheme');
+      if (sel) sel.value = themeName;
+      if (persist) savePreferences();
+    }
+
+    function applyDensity(densityName, persist = true) {
+      document.body.classList.remove('density-comfortable', 'density-compact');
+      document.body.classList.add(densityName);
+      const sel = document.getElementById('prefDensity');
+      if (sel) sel.value = densityName;
+      if (persist) savePreferences();
+    }
+
+    function resetPreferences() {
+      applyTheme('theme-dark');
+      applyDensity('density-comfortable');
+      localStorage.removeItem('eatdata_prefs');
+      closeSettingsModal();
+    }
+
+    function openSettingsModal() {
+      document.getElementById('settingsModal').classList.add('active');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.remove('active');
+    }
 
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -516,6 +863,17 @@
         loadTemplates();
       }
     }
+
+    // Keyboard Shortcuts (Ctrl+Z, Ctrl+Y)
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undoStep();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redoStep();
+      }
+    });
 
     async function handleFileSelected(input) {
       if (!input.files || input.files.length === 0) return;
@@ -531,187 +889,117 @@
           return;
         }
         const data = await res.json();
+        // Save immutable baseline
+        rawBaselineDataset = JSON.parse(JSON.stringify(data.dataset));
         currentDataset = data.dataset;
         currentProfile = data.profile;
-        activePipeline = { steps: [] };
+        activePipeline = { id: crypto.randomUUID ? crypto.randomUUID() : 'pipeline-1', name: 'Cleaning Pipeline', version: '1.0', steps: [] };
+        undoStack = [];
+        redoStack = [];
         modifiedCellSet.clear();
 
         updateUI();
       } catch (err) {
         alert('Network or server error during import: ' + err);
+      } finally {
+        input.value = '';
       }
     }
 
-    function updateUI() {
-      if (!currentDataset || !currentProfile) return;
+    async function loadDemoDataset() {
+      try {
+        const res = await fetch('/api/demo');
+        if (!res.ok) {
+          alert('Could not load sample data.');
+          return;
+        }
+        const data = await res.json();
+        rawBaselineDataset = JSON.parse(JSON.stringify(data.dataset));
+        currentDataset = data.dataset;
+        currentProfile = data.profile;
+        activePipeline = { id: crypto.randomUUID ? crypto.randomUUID() : 'pipeline-1', name: 'Sample Data Pipeline', version: '1.0', steps: [] };
+        undoStack = [];
+        redoStack = [];
+        modifiedCellSet.clear();
 
-      // Dataset info
-      document.getElementById('datasetInfo').innerHTML = `
-        <div style="font-weight:600; color:var(--text-primary); font-size:13px;">${currentDataset.name}</div>
-        <div style="font-size:11px; margin-top:2px;">${currentProfile.row_count} rows &bull; ${currentProfile.column_count} columns</div>
-      `;
-
-      // Stats
-      document.getElementById('statRows').textContent = currentProfile.row_count;
-      document.getElementById('statCols').textContent = currentProfile.column_count;
-      document.getElementById('statDuplicates').textContent = currentProfile.duplicate_row_count;
-      document.getElementById('statNulls').textContent = currentProfile.total_null_count;
-
-      // Render Data Table
-      const thead = document.getElementById('dataThead');
-      const tbody = document.getElementById('dataTbody');
-      thead.innerHTML = '<tr>' + currentDataset.columns.map(c => `<th>${c.name}</th>`).join('') + '</tr>';
-
-      tbody.innerHTML = currentDataset.rows.slice(0, 50).map((row, rIdx) => {
-        return '<tr>' + row.map((val, cIdx) => {
-          const isMod = modifiedCellSet.has(`${rIdx},${cIdx}`);
-          const displayVal = (val === null || val === '') ? '<span style="color:var(--text-muted);">&lt;null&gt;</span>' : val;
-          return `<td class="${isMod ? 'cell-modified' : ''}">${displayVal}</td>`;
-        }).join('') + '</tr>';
-      }).join('');
-
-      // Render Profile Table
-      const profTbody = document.getElementById('profileTbody');
-      profTbody.innerHTML = Object.values(currentProfile.columns).map(col => {
-        return `<tr>
-          <td><strong>${col.name}</strong></td>
-          <td><span style="background:var(--bg-surface-elevated); padding:2px 6px; border-radius:4px;">${col.inferred_type}</span></td>
-          <td>${Math.round(col.type_confidence * 100)}%</td>
-          <td>${col.null_count + col.empty_string_count}</td>
-          <td>${col.null_percentage}%</td>
-          <td>${col.distinct_count}</td>
-          <td>${col.min_value !== null ? col.min_value : '-'}</td>
-          <td>${col.max_value !== null ? col.max_value : '-'}</td>
-          <td>${col.mean_value !== null ? col.mean_value : '-'}</td>
-          <td>${col.sample_categories.join(', ') || '-'}</td>
-        </tr>`;
-      }).join('');
-
-      // Populate column selectors
-      const chartSelect = document.getElementById('chartColSelect');
-      chartSelect.innerHTML = currentDataset.columns.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-
-      // Render pipeline list
-      renderPipelineList();
-
-      // Render charts
-      renderMissingnessChart();
-      renderSelectedColumnChart();
-      handleOpSelectionChange();
-    }
-
-    function renderPipelineList() {
-      const container = document.getElementById('pipelineList');
-      document.getElementById('pipelineCount').textContent = activePipeline.steps.length;
-      if (activePipeline.steps.length === 0) {
-        container.innerHTML = '<div style="color:var(--text-muted); font-size:11px;">No transformation steps applied yet.</div>';
-        return;
-      }
-      container.innerHTML = activePipeline.steps.map((st, i) => `
-        <div class="pipeline-step">
-          <div>
-            <div class="step-name">${i + 1}. ${st.name}</div>
-            <div class="step-desc">${st.columns && st.columns.length ? st.columns.join(', ') : 'All columns'}</div>
-          </div>
-          <button class="btn btn-danger" style="padding:2px 6px; font-size:11px;" onclick="removePipelineStep(${i})">&times;</button>
-        </div>
-      `).join('');
-    }
-
-    function handleOpSelectionChange() {
-      const op = document.getElementById('opSelect').value;
-      const container = document.getElementById('opParamsContainer');
-      const cols = currentDataset ? currentDataset.columns.map(c => c.name) : [];
-      const colOptions = cols.map(c => `<option value="${c}">${c}</option>`).join('');
-
-      if (op === 'trim_whitespace' || op === 'drop_duplicates' || op === 'normalize_headers') {
-        container.innerHTML = `<div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Applies to all applicable columns.</div>`;
-      } else if (op === 'rename_column') {
-        container.innerHTML = `
-          <div class="form-group">
-            <label class="form-label">Column</label>
-            <select id="paramCol" class="form-select">${colOptions}</select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">New Column Name</label>
-            <input type="text" id="paramNewName" class="form-input" placeholder="e.g. user_id">
-          </div>
-        `;
-      } else if (op === 'fill_missing') {
-        container.innerHTML = `
-          <div class="form-group">
-            <label class="form-label">Column</label>
-            <select id="paramCol" class="form-select">${colOptions}</select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Strategy</label>
-            <select id="paramStrategy" class="form-select" onchange="toggleFillValue(this.value)">
-              <option value="constant">Constant Value</option>
-              <option value="mean">Mean (numeric)</option>
-              <option value="median">Median (numeric)</option>
-              <option value="mode">Mode (most frequent)</option>
-              <option value="forward_fill">Forward Fill</option>
-              <option value="backward_fill">Backward Fill</option>
-            </select>
-          </div>
-          <div class="form-group" id="fillValGroup">
-            <label class="form-label">Replacement Value</label>
-            <input type="text" id="paramFillValue" class="form-input" value="0">
-          </div>
-        `;
-      } else if (op === 'cast_type') {
-        container.innerHTML = `
-          <div class="form-group">
-            <label class="form-label">Column</label>
-            <select id="paramCol" class="form-select">${colOptions}</select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Target Data Type</label>
-            <select id="paramTargetType" class="form-select">
-              <option value="integer">Integer</option>
-              <option value="float">Float</option>
-              <option value="string">String</option>
-              <option value="boolean">Boolean</option>
-              <option value="date">Date</option>
-            </select>
-          </div>
-        `;
-      } else if (op === 'filter_rows') {
-        container.innerHTML = `
-          <div class="form-group">
-            <label class="form-label">Column</label>
-            <select id="paramCol" class="form-select">${colOptions}</select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Operator</label>
-            <select id="paramOperator" class="form-select">
-              <option value="not_null">Is Not Null / Non-empty</option>
-              <option value="is_null">Is Null / Empty</option>
-              <option value="==">Equals (==)</option>
-              <option value="!=">Not Equals (!=)</option>
-              <option value="contains">Contains text</option>
-              <option value=">">Greater than (&gt;)</option>
-              <option value="<">Less than (&lt;)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Compare Value</label>
-            <input type="text" id="paramFilterVal" class="form-input" placeholder="e.g. active or 100">
-          </div>
-        `;
-      } else if (op === 'drop_columns') {
-        container.innerHTML = `
-          <div class="form-group">
-            <label class="form-label">Column to Drop</label>
-            <select id="paramCol" class="form-select">${colOptions}</select>
-          </div>
-        `;
+        updateUI();
+      } catch (err) {
+        alert('Error loading sample data: ' + err);
       }
     }
 
-    function toggleFillValue(strategy) {
-      const g = document.getElementById('fillValGroup');
-      if (g) g.style.display = strategy === 'constant' ? 'block' : 'none';
+    // Pipeline Replay Engine: Executes activePipeline from rawBaselineDataset
+    async function replayPipeline() {
+      if (!rawBaselineDataset) return;
+      try {
+        const res = await fetch('/api/transform', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataset: rawBaselineDataset, pipeline: activePipeline })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Transformation Error: ' + err.message);
+          return false;
+        }
+        const data = await res.json();
+        currentDataset = data.dataset;
+        currentProfile = data.profile;
+
+        // Compute diff against baseline
+        computeDiffAgainstBaseline();
+        updateUI();
+        return true;
+      } catch (err) {
+        alert('Execution failed: ' + err);
+        return false;
+      }
+    }
+
+    function computeDiffAgainstBaseline() {
+      modifiedCellSet.clear();
+      if (!rawBaselineDataset || !currentDataset) return;
+      const baseRows = rawBaselineDataset.rows;
+      const currRows = currentDataset.rows;
+      const minRows = Math.min(baseRows.length, currRows.length);
+      const minCols = Math.min(
+        rawBaselineDataset.columns.length,
+        currentDataset.columns.length
+      );
+
+      for (let r = 0; r < minRows; r++) {
+        for (let c = 0; c < minCols; c++) {
+          if (String(baseRows[r][c] ?? '') !== String(currRows[r][c] ?? '')) {
+            modifiedCellSet.add(`${r},${c}`);
+          }
+        }
+      }
+    }
+
+    // Undo / Redo
+    async function undoStep() {
+      if (undoStack.length === 0) return;
+      const prevSteps = undoStack.pop();
+      redoStack.push(JSON.parse(JSON.stringify(activePipeline.steps)));
+      activePipeline.steps = prevSteps;
+      await replayPipeline();
+      updateHistoryButtons();
+    }
+
+    async function redoStep() {
+      if (redoStack.length === 0) return;
+      const nextSteps = redoStack.pop();
+      undoStack.push(JSON.parse(JSON.stringify(activePipeline.steps)));
+      activePipeline.steps = nextSteps;
+      await replayPipeline();
+      updateHistoryButtons();
+    }
+
+    function updateHistoryButtons() {
+      const uBtn = document.getElementById('btnUndo');
+      const rBtn = document.getElementById('btnRedo');
+      if (uBtn) uBtn.disabled = undoStack.length === 0;
+      if (rBtn) rBtn.disabled = redoStack.length === 0;
     }
 
     async function addAndApplyOperation() {
@@ -720,7 +1008,7 @@
         return;
       }
       const opName = document.getElementById('opSelect').value;
-      const step = { name: opName, columns: [], parameters: {} };
+      const step = { name: opName, columns: [], parameters: {}, enabled: true };
 
       if (opName === 'rename_column') {
         step.columns = [document.getElementById('paramCol').value];
@@ -743,48 +1031,332 @@
         step.columns = [document.getElementById('paramCol').value];
       }
 
-      // Add to pipeline
+      // Record snapshot in undoStack
+      undoStack.push(JSON.parse(JSON.stringify(activePipeline.steps)));
+      redoStack = []; // Clear redo stack on new action
       activePipeline.steps.push(step);
 
-      try {
-        // Execute pipeline via API
-        const res = await fetch('/api/transform', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dataset: currentDataset, pipeline: activePipeline })
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          alert('Transformation Error: ' + err.message);
-          activePipeline.steps.pop();
-          return;
-        }
-        const data = await res.json();
-        currentDataset = data.dataset;
-        currentProfile = data.profile;
-
-        // Fetch diff preview
-        const prevRes = await fetch('/api/preview', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dataset: currentDataset, operation: step })
-        });
-        if (prevRes.ok) {
-          const prevData = await prevRes.json();
-          modifiedCellSet.clear();
-          prevData.modified_cells.forEach(coord => modifiedCellSet.add(`${coord[0]},${coord[1]}`));
-        }
-
-        updateUI();
-      } catch (err) {
-        alert('Server error: ' + err);
+      const ok = await replayPipeline();
+      if (!ok) {
+        activePipeline.steps.pop();
+        undoStack.pop();
       }
+      updateHistoryButtons();
     }
 
     async function removePipelineStep(index) {
+      undoStack.push(JSON.parse(JSON.stringify(activePipeline.steps)));
+      redoStack = [];
       activePipeline.steps.splice(index, 1);
-      // Re-run pipeline from beginning or re-render
+      await replayPipeline();
+      updateHistoryButtons();
+    }
+
+    async function togglePipelineStep(index) {
+      undoStack.push(JSON.parse(JSON.stringify(activePipeline.steps)));
+      redoStack = [];
+      activePipeline.steps[index].enabled = !activePipeline.steps[index].enabled;
+      await replayPipeline();
+      updateHistoryButtons();
+    }
+
+    // UI Updates
+    function updateUI() {
+      if (!currentDataset || !currentProfile) return;
+
+      // Dataset info
+      document.getElementById('datasetInfo').innerHTML = `
+        <div style="font-weight:600; color:var(--text-primary); font-size:13px;">${currentDataset.name}</div>
+        <div style="font-size:11px; margin-top:2px;">${currentProfile.row_count} rows &bull; ${currentProfile.column_count} columns</div>
+      `;
+
+      // Stats
+      document.getElementById('statRows').textContent = currentProfile.row_count;
+      document.getElementById('statCols').textContent = currentProfile.column_count;
+      document.getElementById('statDuplicates').textContent = currentProfile.duplicate_row_count;
+      document.getElementById('statNulls').textContent = currentProfile.total_null_count;
+
       renderPipelineList();
+      renderDataTable();
+      renderProfileTable();
+      renderColumnSelects();
+      renderMissingnessChart();
+      renderSelectedColumnChart();
+      updateHistoryButtons();
+    }
+
+    function renderPipelineList() {
+      const container = document.getElementById('pipelineList');
+      const countEl = document.getElementById('pipelineCount');
+      countEl.textContent = activePipeline.steps.length;
+
+      if (activePipeline.steps.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:11px;">No transformation steps applied yet.</div>';
+        return;
+      }
+
+      container.innerHTML = activePipeline.steps.map((step, i) => {
+        const isDis = step.enabled === false;
+        const colStr = step.columns && step.columns.length ? step.columns.join(', ') : 'All columns';
+        return `
+          <div class="pipeline-step ${isDis ? 'disabled' : ''}">
+            <div class="step-info">
+              <div class="step-name">${i + 1}. ${step.name}</div>
+              <div class="step-desc" title="${colStr}">${colStr}</div>
+            </div>
+            <div class="step-actions">
+              <button class="btn" style="padding:2px 6px; font-size:10px;" title="${isDis ? 'Enable Step' : 'Disable Step'}" onclick="togglePipelineStep(${i})">
+                ${isDis ? '&#9675;' : '&#9679;'}
+              </button>
+              <button class="btn btn-danger" style="padding:2px 6px; font-size:10px;" title="Remove Step" onclick="removePipelineStep(${i})">&times;</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Interactive Data Table: Search, Sort, Pagination
+    function handleTableSearch(query) {
+      tableSearchQuery = query.toLowerCase().trim();
+      currentPage = 1;
+      renderDataTable();
+    }
+
+    function toggleSort(colIdx) {
+      if (sortColumn === colIdx) {
+        if (sortDirection === 'asc') sortDirection = 'desc';
+        else if (sortDirection === 'desc') { sortDirection = 'none'; sortColumn = null; }
+        else sortDirection = 'asc';
+      } else {
+        sortColumn = colIdx;
+        sortDirection = 'asc';
+      }
+      renderDataTable();
+    }
+
+    function changePageSize(val) {
+      pageSize = val === 'all' ? 'all' : parseInt(val, 10);
+      currentPage = 1;
+      renderDataTable();
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderDataTable();
+      }
+    }
+
+    function nextPage() {
+      currentPage++;
+      renderDataTable();
+    }
+
+    function renderDataTable() {
+      if (!currentDataset) return;
+      const thead = document.getElementById('dataThead');
+      const tbody = document.getElementById('dataTbody');
+
+      // Thead with sorting indicators
+      thead.innerHTML = '<tr>' + currentDataset.columns.map((c, colIdx) => {
+        let glyph = '';
+        if (sortColumn === colIdx) {
+          glyph = sortDirection === 'asc' ? ' <span class="sort-glyph">&#9650;</span>' :
+                  sortDirection === 'desc' ? ' <span class="sort-glyph">&#9660;</span>' : '';
+        }
+        return `<th onclick="toggleSort(${colIdx})" title="Click to sort">${c.name}${glyph}</th>`;
+      }).join('') + '</tr>';
+
+      // Rows filtering and sorting
+      let indexedRows = currentDataset.rows.map((row, rIdx) => ({ row, origIdx: rIdx }));
+
+      // 1. Filter
+      if (tableSearchQuery) {
+        indexedRows = indexedRows.filter(item => {
+          return item.row.some(val => val !== null && String(val).toLowerCase().includes(tableSearchQuery));
+        });
+      }
+
+      const totalMatching = indexedRows.length;
+      const filterBadge = document.getElementById('filterCountBadge');
+      if (tableSearchQuery) {
+        filterBadge.textContent = `${totalMatching} of ${currentDataset.rows.length} rows`;
+      } else {
+        filterBadge.textContent = '';
+      }
+
+      // 2. Sort
+      if (sortColumn !== null && sortDirection !== 'none') {
+        const cIdx = sortColumn;
+        const dir = sortDirection === 'asc' ? 1 : -1;
+        indexedRows.sort((a, b) => {
+          const vA = a.row[cIdx];
+          const vB = b.row[cIdx];
+          if (vA === vB) return 0;
+          if (vA === null || vA === undefined) return 1;
+          if (vB === null || vB === undefined) return -1;
+          if (typeof vA === 'number' && typeof vB === 'number') return (vA - vB) * dir;
+          return String(vA).localeCompare(String(vB)) * dir;
+        });
+      }
+
+      // 3. Paginate
+      const actualPageSize = pageSize === 'all' ? totalMatching : pageSize;
+      const totalPages = Math.max(1, Math.ceil(totalMatching / (actualPageSize || 1)));
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      const startIdx = pageSize === 'all' ? 0 : (currentPage - 1) * actualPageSize;
+      const endIdx = pageSize === 'all' ? totalMatching : Math.min(startIdx + actualPageSize, totalMatching);
+      const pageRows = indexedRows.slice(startIdx, endIdx);
+
+      // Pagination indicators
+      const pageIndicator = document.getElementById('pageIndicator');
+      const btnPrev = document.getElementById('btnPrevPage');
+      const btnNext = document.getElementById('btnNextPage');
+      if (pageIndicator) pageIndicator.textContent = `Page ${currentPage} of ${totalPages} (${totalMatching} rows)`;
+      if (btnPrev) btnPrev.disabled = currentPage <= 1;
+      if (btnNext) btnNext.disabled = currentPage >= totalPages;
+
+      // Render Tbody
+      if (pageRows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${currentDataset.columns.length}" style="text-align:center; padding:24px; color:var(--text-muted);">No matching rows found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = pageRows.map(item => {
+        const rIdx = item.origIdx;
+        return '<tr>' + item.row.map((val, cIdx) => {
+          const isMod = modifiedCellSet.has(`${rIdx},${cIdx}`);
+          const displayVal = (val === null || val === undefined || val === '')
+            ? '<span style="color:var(--text-muted);">&lt;null&gt;</span>'
+            : val;
+          return `<td class="${isMod ? 'cell-modified' : ''}" title="${isMod ? 'Modified from baseline' : ''}">${displayVal}</td>`;
+        }).join('') + '</tr>';
+      }).join('');
+    }
+
+    function renderProfileTable() {
+      const tbody = document.getElementById('profileTbody');
+      tbody.innerHTML = currentProfile.columns.map(c => `
+        <tr>
+          <td style="font-weight:600; color:var(--text-primary);">${c.name}</td>
+          <td><span class="badge-offline" style="color:var(--accent-blue);">${c.inferred_type}</span></td>
+          <td>${Math.round(c.confidence_score * 100)}%</td>
+          <td>${c.null_count}</td>
+          <td>${c.null_percentage}%</td>
+          <td>${c.distinct_count}</td>
+          <td>${c.min_value ?? '-'}</td>
+          <td>${c.max_value ?? '-'}</td>
+          <td>${c.mean_value ? c.mean_value.toFixed(2) : '-'}</td>
+          <td style="color:var(--text-muted);">${c.common_patterns && c.common_patterns.length ? c.common_patterns.join(', ') : '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderColumnSelects() {
+      const colOptions = currentDataset.columns.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+      const chartSelect = document.getElementById('chartColSelect');
+      if (chartSelect) {
+        const prev = chartSelect.value;
+        chartSelect.innerHTML = colOptions;
+        if (prev && currentDataset.columns.some(c => c.name === prev)) chartSelect.value = prev;
+      }
+      handleOpSelectionChange();
+    }
+
+    function handleOpSelectionChange() {
+      const op = document.getElementById('opSelect').value;
+      const container = document.getElementById('opParamsContainer');
+      if (!currentDataset) return;
+      const colOptions = currentDataset.columns.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+
+      if (['trim_whitespace', 'normalize_headers', 'drop_duplicates'].includes(op)) {
+        container.innerHTML = '<div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Applies automatically across valid dataset columns.</div>';
+      } else if (op === 'rename_column') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Column to Rename</label>
+            <select id="paramCol" class="form-select">${colOptions}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Column Name</label>
+            <input type="text" id="paramNewName" class="form-input" placeholder="e.g. customer_id">
+          </div>
+        `;
+      } else if (op === 'fill_missing') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Target Column</label>
+            <select id="paramCol" class="form-select">${colOptions}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fill Strategy</label>
+            <select id="paramStrategy" class="form-select" onchange="toggleFillValue(this.value)">
+              <option value="forward_fill">Forward Fill (ffill)</option>
+              <option value="backward_fill">Backward Fill (bfill)</option>
+              <option value="mean">Mean (numeric)</option>
+              <option value="median">Median (numeric)</option>
+              <option value="mode">Mode (most frequent)</option>
+              <option value="constant">Constant Value</option>
+            </select>
+          </div>
+          <div class="form-group" id="fillValGroup" style="display:none;">
+            <label class="form-label">Constant Value</label>
+            <input type="text" id="paramFillValue" class="form-input" placeholder="Replacement value">
+          </div>
+        `;
+      } else if (op === 'cast_type') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Target Column</label>
+            <select id="paramCol" class="form-select">${colOptions}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Target Type</label>
+            <select id="paramTargetType" class="form-select">
+              <option value="integer">Integer</option>
+              <option value="float">Float</option>
+              <option value="string">String</option>
+              <option value="boolean">Boolean</option>
+              <option value="date">Date</option>
+            </select>
+          </div>
+        `;
+      } else if (op === 'filter_rows') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Filter Column</label>
+            <select id="paramCol" class="form-select">${colOptions}</select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Condition</label>
+            <select id="paramOperator" class="form-select">
+              <option value="not_null">Is Not Null / Non-Empty</option>
+              <option value="is_null">Is Null / Empty</option>
+              <option value="equals">Equals</option>
+              <option value="contains">Contains Text</option>
+              <option value="greater_than">Greater Than (&gt;)</option>
+              <option value="less_than">Less Than (&lt;)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Comparison Value</label>
+            <input type="text" id="paramFilterVal" class="form-input" placeholder="e.g. 100 or Active">
+          </div>
+        `;
+      } else if (op === 'drop_columns') {
+        container.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Column to Drop</label>
+            <select id="paramCol" class="form-select">${colOptions}</select>
+          </div>
+        `;
+      }
+    }
+
+    function toggleFillValue(strategy) {
+      const g = document.getElementById('fillValGroup');
+      if (g) g.style.display = strategy === 'constant' ? 'block' : 'none';
     }
 
     async function renderMissingnessChart() {
@@ -877,41 +1449,7 @@
       }
     }
 
-    async function loadDemoDataset() {
-      try {
-        const res = await fetch('/api/demo');
-        if (!res.ok) {
-          alert('Could not load sample data.');
-          return;
-        }
-        const data = await res.json();
-        currentDataset = data.dataset;
-        currentProfile = data.profile;
-        activePipeline = { steps: [] };
-        modifiedCellSet.clear();
-
-        // Automatically precompute prospective diff preview for demonstration
-        try {
-          const prevRes = await fetch('/api/preview', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              dataset: currentDataset,
-              operation: { name: 'trim_whitespace', columns: [], parameters: {} }
-            })
-          });
-          if (prevRes.ok) {
-            const prevData = await prevRes.json();
-            prevData.modified_cells.forEach(coord => modifiedCellSet.add(`${coord[0]},${coord[1]}`));
-          }
-        } catch (_) {}
-
-        updateUI();
-      } catch (err) {
-        alert('Error loading sample data: ' + err);
-      }
-    }
-
+    // AI Assistant
     async function previewAiPayload() {
       if (!currentDataset) { alert('Please load or import a dataset first.'); return; }
       const alias = document.getElementById('aiAliasCols').checked;
@@ -965,7 +1503,7 @@
         const list = document.getElementById('aiStepsList');
         list.innerHTML = data.pipeline.steps.map((s, i) => `
           <div class="pipeline-step">
-            <div>
+            <div class="step-info">
               <div class="step-name">${i + 1}. ${s.name}</div>
               <div class="step-desc">${s.columns && s.columns.length ? s.columns.join(', ') : 'All columns'}</div>
             </div>
@@ -979,28 +1517,15 @@
 
     async function applyProposedAiRecipe() {
       if (!lastProposedAiPipeline || !currentDataset) return;
-      try {
-        const res = await fetch('/api/transform', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dataset: currentDataset, pipeline: lastProposedAiPipeline })
-        });
-        if (!res.ok) {
-          const err = await res.json();
-          alert('Transform error: ' + err.message);
-          return;
-        }
-        const data = await res.json();
-        currentDataset = data.dataset;
-        currentProfile = data.profile;
-        activePipeline = lastProposedAiPipeline;
-        updateUI();
-        switchTab('dataTab');
-      } catch (err) {
-        alert('Server error: ' + err);
-      }
+      undoStack.push(JSON.parse(JSON.stringify(activePipeline.steps)));
+      redoStack = [];
+      activePipeline = lastProposedAiPipeline;
+      await replayPipeline();
+      updateHistoryButtons();
+      switchTab('dataTab');
     }
 
+    // Templates
     async function loadTemplates() {
       const container = document.getElementById('templatesGrid');
       if (container.children.length > 0) return;
@@ -1038,28 +1563,142 @@
         const tpl = data.templates.find(t => t.template_id === templateId);
         if (!tpl) return;
 
-        const transRes = await fetch('/api/transform', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dataset: currentDataset, pipeline: tpl.pipeline })
-        });
-        if (!transRes.ok) {
-          const err = await transRes.json();
-          alert('Template execution error: ' + err.message);
-          return;
-        }
-        const result = await transRes.json();
-        currentDataset = result.dataset;
-        currentProfile = result.profile;
+        undoStack.push(JSON.parse(JSON.stringify(activePipeline.steps)));
+        redoStack = [];
         activePipeline = tpl.pipeline;
-        updateUI();
+        await replayPipeline();
+        updateHistoryButtons();
         switchTab('dataTab');
       } catch (err) {
         alert('Server error: ' + err);
       }
     }
 
+    // Pipelines Persistence (SQLite)
+    async function openPipelinesModal() {
+      document.getElementById('pipelinesModal').classList.add('active');
+      await refreshSavedPipelinesList();
+    }
+
+    function closePipelinesModal() {
+      document.getElementById('pipelinesModal').classList.remove('active');
+    }
+
+    async function refreshSavedPipelinesList() {
+      const container = document.getElementById('savedPipelinesList');
+      container.innerHTML = '<div style="color:var(--text-muted); font-size:12px; padding:12px 0;">Loading saved pipelines...</div>';
+      try {
+        const res = await fetch('/api/pipelines');
+        if (!res.ok) {
+          container.innerHTML = '<div style="color:var(--accent-rose); font-size:12px;">Failed to load pipelines from SQLite.</div>';
+          return;
+        }
+        const data = await res.json();
+        const list = data.pipelines || [];
+        if (list.length === 0) {
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:12px; padding:12px 0;">No pipelines saved yet. Save one using the button above.</div>';
+          return;
+        }
+        container.innerHTML = list.map(p => `
+          <div class="pipeline-step" style="padding:10px 14px;">
+            <div class="step-info">
+              <div style="font-weight:600; font-size:13px; color:var(--text-primary);">${p.name}</div>
+              <div style="font-size:11px; color:var(--text-secondary); margin-top:2px;">
+                ${p.description ? p.description + ' &bull; ' : ''}Updated: ${p.updated_at ? new Date(p.updated_at).toLocaleDateString() : 'recent'}
+              </div>
+            </div>
+            <div class="step-actions">
+              <button class="btn btn-primary" style="padding:4px 10px; font-size:11px;" onclick="loadAndApplySavedPipeline('${p.id}')">Apply</button>
+              <button class="btn btn-danger" style="padding:4px 8px; font-size:11px;" onclick="deleteSavedPipeline('${p.id}')">Delete</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<div style="color:var(--accent-rose); font-size:12px;">Error: ${err}</div>`;
+      }
+    }
+
+    async function promptSaveCurrentPipeline() {
+      if (activePipeline.steps.length === 0) {
+        alert('Active pipeline has no steps to save. Add at least one transformation step first.');
+        return;
+      }
+      const name = prompt('Enter a name for this pipeline:', activePipeline.name || 'My Pipeline');
+      if (!name) return;
+      const desc = prompt('Enter a description (optional):', '') || '';
+
+      activePipeline.name = name;
+      try {
+        const res = await fetch('/api/pipelines/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pipeline: activePipeline, description: desc })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Save Error: ' + err.message);
+          return;
+        }
+        alert(`Pipeline "${name}" successfully saved to local SQLite repository.`);
+        if (document.getElementById('pipelinesModal').classList.contains('active')) {
+          await refreshSavedPipelinesList();
+        }
+      } catch (err) {
+        alert('Server error saving pipeline: ' + err);
+      }
+    }
+
+    async function loadAndApplySavedPipeline(id) {
+      if (!rawBaselineDataset) {
+        alert('Please import or load a dataset first before applying a saved pipeline.');
+        return;
+      }
+      try {
+        const res = await fetch('/api/pipelines/load', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: id })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Load Error: ' + err.message);
+          return;
+        }
+        const data = await res.json();
+        undoStack.push(JSON.parse(JSON.stringify(activePipeline.steps)));
+        redoStack = [];
+        activePipeline = data.pipeline;
+        await replayPipeline();
+        updateHistoryButtons();
+        closePipelinesModal();
+        switchTab('dataTab');
+      } catch (err) {
+        alert('Error loading pipeline: ' + err);
+      }
+    }
+
+    async function deleteSavedPipeline(id) {
+      if (!confirm('Are you sure you want to delete this saved pipeline?')) return;
+      try {
+        const res = await fetch('/api/pipelines/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: id })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          alert('Delete Error: ' + err.message);
+          return;
+        }
+        await refreshSavedPipelinesList();
+      } catch (err) {
+        alert('Error deleting pipeline: ' + err);
+      }
+    }
+
+    // Initialization
     window.addEventListener('DOMContentLoaded', async () => {
+      loadPreferences();
       const params = new URLSearchParams(window.location.search);
       if (params.get('demo') === '1' || window.location.hash.includes('demo')) {
         await loadDemoDataset();

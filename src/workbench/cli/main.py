@@ -17,6 +17,7 @@ from pathlib import Path
 from workbench.adapters.exporters.csv_exporter import CsvExporter
 from workbench.adapters.exporters.json_exporter import JsonExporter
 from workbench.adapters.importers.csv_importer import CsvImporter
+from workbench.adapters.importers.excel_importer import ExcelImporter
 from workbench.adapters.importers.json_importer import JsonImporter
 from workbench.domain.dataset import Dataset
 from workbench.domain.errors import WorkbenchError
@@ -34,8 +35,13 @@ def load_dataset(file_path: Path) -> Dataset:
     elif ext in (".json", ".ndjson", ".jsonl"):
         importer = JsonImporter()
         return importer.import_file(file_path).dataset
+    elif ext in (".xlsx", ".xlsm"):
+        importer = ExcelImporter()
+        return importer.import_file(file_path).dataset
     else:
-        raise WorkbenchError(f"Unsupported input format: '{ext}'. Supported: .csv, .json")
+        raise WorkbenchError(
+            f"Unsupported input format: '{ext}'. Supported: .csv, .tsv, .json, .ndjson, .xlsx"
+        )
 
 
 def save_dataset(

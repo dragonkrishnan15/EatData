@@ -23,6 +23,7 @@ from workbench.adapters.ai.router import AIRouter
 from workbench.adapters.exporters.csv_exporter import CsvExporter
 from workbench.adapters.exporters.json_exporter import JsonExporter
 from workbench.adapters.importers.csv_importer import CsvImporter
+from workbench.adapters.importers.excel_importer import ExcelImporter
 from workbench.adapters.importers.json_importer import JsonImporter
 from workbench.domain.dataset import Dataset
 from workbench.domain.errors import SecurityError, ValidationError
@@ -55,6 +56,11 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
 
             templates = TemplateCatalog().list_templates()
             self._send_json({"templates": [t.to_dict() for t in templates]})
+        elif path == "/api/pipelines":
+            from workbench.adapters.storage.sqlite_repository import get_default_repository
+
+            repo = get_default_repository()
+            self._send_json({"pipelines": repo.list_pipelines()})
         elif path == "/api/demo":
             from workbench.adapters.importers.csv_importer import CsvImporter
 
@@ -85,6 +91,12 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                 self._handle_ai_preview()
             elif path == "/api/ai/propose":
                 self._handle_ai_propose()
+            elif path == "/api/pipelines/save":
+                self._handle_pipeline_save()
+            elif path == "/api/pipelines/load":
+                self._handle_pipeline_load()
+            elif path == "/api/pipelines/delete":
+                self._handle_pipeline_delete()
             else:
                 self._send_error_json(HTTPStatus.NOT_FOUND, f"Unknown API endpoint: {self.path}")
         except ValidationError as err:
@@ -170,6 +182,8 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
             try:
                 if suffix == ".json":
                     dataset = JsonImporter().import_file(tmp_path).dataset
+                elif suffix in (".xlsx", ".xlsm"):
+                    dataset = ExcelImporter().import_file(tmp_path).dataset
                 else:
                     dataset = CsvImporter().import_file(tmp_path).dataset
                 # Set name to original file name
@@ -194,6 +208,8 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
                 raise ValidationError(f"File not found: {filepath}")
             if p.suffix.lower() == ".json":
                 dataset = JsonImporter().import_file(p).dataset
+            elif p.suffix.lower() in (".xlsx", ".xlsm"):
+                dataset = ExcelImporter().import_file(p).dataset
             else:
                 dataset = CsvImporter().import_file(p).dataset
 
@@ -329,6 +345,43 @@ class WorkbenchRequestHandler(BaseHTTPRequestHandler):
             explicit_consent=True,
         )
         self._send_json({"pipeline": pipeline.to_dict()})
+
+    def _handle_pipeline_save(self) -> None:
+        payload = self._read_body_json()
+        pipeline_data = payload.get("pipeline")
+        description = payload.get("description", "")
+        if not pipeline_data:
+            raise ValidationError("Missing 'pipeline' in payload.")
+        pipeline = Pipeline.from_dict(pipeline_data)
+        from workbench.adapters.storage.sqlite_repository import get_default_repository
+
+        repo = get_default_repository()
+        repo.save_pipeline(pipeline, description=description)
+        self._send_json({"status": "saved", "id": pipeline.id, "name": pipeline.name})
+
+    def _handle_pipeline_load(self) -> None:
+        payload = self._read_body_json()
+        pipeline_id = payload.get("id")
+        if not pipeline_id:
+            raise ValidationError("Missing 'id' in payload.")
+        from workbench.adapters.storage.sqlite_repository import get_default_repository
+
+        repo = get_default_repository()
+        pipeline = repo.get_pipeline(pipeline_id)
+        if not pipeline:
+            raise ValidationError(f"Pipeline with id '{pipeline_id}' not found.")
+        self._send_json({"pipeline": pipeline.to_dict()})
+
+    def _handle_pipeline_delete(self) -> None:
+        payload = self._read_body_json()
+        pipeline_id = payload.get("id")
+        if not pipeline_id:
+            raise ValidationError("Missing 'id' in payload.")
+        from workbench.adapters.storage.sqlite_repository import get_default_repository
+
+        repo = get_default_repository()
+        deleted = repo.delete_pipeline(pipeline_id)
+        self._send_json({"deleted": deleted, "id": pipeline_id})
 
     def log_message(self, format: str, *args: Any) -> None:
         """Suppress default stdout request logging to avoid terminal clutter."""

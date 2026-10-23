@@ -4,10 +4,10 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 
 ## Current phase
 
-**Phase:** M6 — Advanced Capabilities & Completion  
+**Phase:** Universal Data Engineering Platform Upgrade  
 **Overall status:** DONE  
-**Current next task:** All roadmap phases (M0 through M6) completed and verified.  
-**Last verified:** 2026-10-23 (140 unit, storage, visualization, AI, templates, MCP, packaging, security, CLI, and UI integration tests passing, ruff clean).
+**Current next task:** Core engine, UI table, undo/redo, Excel adapter, design tokens, and pipeline persistence completed and verified.  
+**Last verified:** 2026-10-23 (149 unit, storage, visualization, AI, templates, MCP, packaging, security, CLI, and UI integration tests passing, ruff clean, end-to-end browser verified).
 
 ## Task board
 
@@ -37,6 +37,11 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 | M5-01 | DONE | Package and smoke-test on supported OS targets | M2-02, M4-05 | Built `dist/eatdata-0.1.0-py3-none-any.whl` with hatchling. Documented in `PACKAGING.md`. Verified via `tests/integration/test_packaging_smoke.py`. |
 | M6-01 | DONE | Evaluate additional formats and industry templates | M5-01 | Implemented `TemplateCatalog` with 4 curated domain cleaning recipes and CLI `workbench template list/apply`. Tested in `test_templates.py`. |
 | M6-02 | DONE | Threat-review MCP server mode | M5-01 | Local stdio JSON-RPC 2.0 MCP server implemented in `MCPServer`, tested in `test_mcp_server.py`, and verified threat boundary in `test_mcp_threat_boundary.py`. |
+| M7-01 | DONE | Universal Ingestion: Zero-dependency Excel (.xlsx) Importer | M1-01, M1-02 | Implemented `ExcelImporter` in `excel_importer.py` using stdlib `zipfile` + `xml.etree`. Verified with 7 unit tests and integration tests. |
+| M7-02 | DONE | Interactive Table: Sorting, Filtering, and Pagination | M2-02 | Upgraded `app.html` with column header click-to-sort, live search filter across columns, and pagination (25/50/100/All). |
+| M7-03 | DONE | Deterministic Replay & Undo/Redo Engine | M1-04, M2-02 | Implemented immutable `rawBaselineDataset`, `undoStack`, `redoStack`, and deterministic pipeline replay from baseline on step remove/toggle/undo. |
+| M7-04 | DONE | Coherent Token-based Theming and Layout Density | M2-02 | Added CSS tokens for Deep Carbon (dark), Studio Slate (light), and Zinc (slate), plus Comfortable and Compact densities. Persisted in `localStorage`. |
+| M7-05 | DONE | UI Pipeline Persistence via SQLite Storage | M3-01, M2-02 | Wired `/api/pipelines`, `/api/pipelines/save`, `/api/pipelines/load`, `/api/pipelines/delete` to `SqliteRepository`. Modal in `app.html` tested and verified. |
 
 ## Blockers
 

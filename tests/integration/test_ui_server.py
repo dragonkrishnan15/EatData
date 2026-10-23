@@ -218,3 +218,87 @@ def test_api_ai_preview_and_propose(ui_server: str) -> None:
         assert len(data["pipeline"]["steps"]) > 0
         # Columns in proposed recipe should be unaliased back to original names!
         assert "full_name" in data["pipeline"]["steps"][0]["columns"]
+
+
+def test_api_import_excel(ui_server: str, tmp_path: Path) -> None:
+    from tests.unit.importers.test_excel_importer import create_minimal_xlsx
+
+    sample_data = {
+        "Sheet1": [["id", "city", "rating"], [1, "San Francisco", 4.8], [2, "Tokyo", 4.9]]
+    }
+    file_path = tmp_path / "cities.xlsx"
+    file_path.write_bytes(create_minimal_xlsx(sample_data))
+
+    payload = json.dumps({"filepath": str(file_path)}).encode("utf-8")
+    req = urllib.request.Request(
+        f"{ui_server}/api/import",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req) as resp:
+        assert resp.status == 200
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data["dataset"]["name"] == "cities"
+        assert len(data["dataset"]["columns"]) == 3
+        assert len(data["dataset"]["rows"]) == 2
+
+
+def test_api_pipeline_persistence(ui_server: str) -> None:
+    # 1. Save pipeline
+    pipe_payload = {
+        "pipeline": {
+            "id": "test-pipe-101",
+            "name": "Integration Clean Pipeline",
+            "version": "1.0",
+            "steps": [
+                {
+                    "name": "trim_whitespace",
+                    "columns": ["col_1"],
+                    "parameters": {},
+                    "enabled": True,
+                }
+            ],
+        },
+        "description": "Integration test pipeline",
+    }
+    save_req = urllib.request.Request(
+        f"{ui_server}/api/pipelines/save",
+        data=json.dumps(pipe_payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(save_req) as resp:
+        assert resp.status == 200
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data["status"] == "saved"
+        assert data["id"] == "test-pipe-101"
+
+    # 2. List pipelines
+    list_req = urllib.request.Request(f"{ui_server}/api/pipelines")
+    with urllib.request.urlopen(list_req) as resp:
+        assert resp.status == 200
+        data = json.loads(resp.read().decode("utf-8"))
+        assert "pipelines" in data
+        assert any(p["id"] == "test-pipe-101" for p in data["pipelines"])
+
+    # 3. Load pipeline
+    load_req = urllib.request.Request(
+        f"{ui_server}/api/pipelines/load",
+        data=json.dumps({"id": "test-pipe-101"}).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(load_req) as resp:
+        assert resp.status == 200
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data["pipeline"]["name"] == "Integration Clean Pipeline"
+        assert len(data["pipeline"]["steps"]) == 1
+
+    # 4. Delete pipeline
+    del_req = urllib.request.Request(
+        f"{ui_server}/api/pipelines/delete",
+        data=json.dumps({"id": "test-pipe-101"}).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(del_req) as resp:
+        assert resp.status == 200
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data["deleted"] is True
