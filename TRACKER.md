@@ -4,10 +4,10 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 
 ## Current phase
 
-**Phase:** M5 — Packaging and hardening  
-**Overall status:** IN_PROGRESS  
-**Current next task:** Package and smoke-test on supported OS targets (M5-01).  
-**Last verified:** 2026-10-23 (118 unit, storage, visualization, AI, security, CLI, and UI integration tests passing, ruff clean).
+**Phase:** M6 — Advanced Capabilities & Completion  
+**Overall status:** DONE  
+**Current next task:** All roadmap phases (M0 through M6) completed and verified.  
+**Last verified:** 2026-10-23 (140 unit, storage, visualization, AI, templates, MCP, packaging, security, CLI, and UI integration tests passing, ruff clean).
 
 ## Task board
 
@@ -34,9 +34,9 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 | M4-03 | DONE | Add strict recipe schema and validator | M0-03, M4-02 | `RecipeValidator` enforces `ALLOWLISTED_OPERATIONS`, rejects code injection and arbitrary python in `test_recipe_validator.py`. |
 | M4-04 | DONE | Integrate first cloud provider behind consent gate | M4-02, M4-03 | `CloudAIProvider` implemented with secret safety and `test_providers.py`. |
 | M4-05 | DONE | Integrate Ollama adapter and endpoint safety checks | M4-02, M4-03 | `OllamaProvider` with loopback enforcement (refusing remote host endpoints) tested in `test_providers.py`. |
-| M5-01 | TODO | Package and smoke-test on supported OS targets | M2-02, M4-05 | Reproducible build and install test recorded |
-| M6-01 | TODO | Evaluate additional formats and industry templates | M5-01 | Prioritized by user evidence |
-| M6-02 | TODO | Threat-review MCP server mode | M5-01 | Authentication/permissions/network boundary reviewed |
+| M5-01 | DONE | Package and smoke-test on supported OS targets | M2-02, M4-05 | Built `dist/eatdata-0.1.0-py3-none-any.whl` with hatchling. Documented in `PACKAGING.md`. Verified via `tests/integration/test_packaging_smoke.py`. |
+| M6-01 | DONE | Evaluate additional formats and industry templates | M5-01 | Implemented `TemplateCatalog` with 4 curated domain cleaning recipes and CLI `workbench template list/apply`. Tested in `test_templates.py`. |
+| M6-02 | DONE | Threat-review MCP server mode | M5-01 | Local stdio JSON-RPC 2.0 MCP server implemented in `MCPServer`, tested in `test_mcp_server.py`, and verified threat boundary in `test_mcp_threat_boundary.py`. |
 
 ## Blockers
 
@@ -99,6 +99,23 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 - Wired AI into CLI via `workbench ai propose` (supporting `--preview-payload`, `--consent`, `--alias-columns`) and UI server via `/api/ai/preview-payload` and `/api/ai/propose`.
 - Total 118 tests passing across all suites. Ruff linting and formatting 100% clean.
 - All M4 tasks (M4-01 through M4-05) marked DONE. Transitioned to M5.
+
+### M5 Milestone Completed: Packaging and Hardening (2026-10-23)
+- Built reproducible source distribution (`dist/eatdata-0.1.0.tar.gz`) and standard wheel (`dist/eatdata-0.1.0-py3-none-any.whl`) via `uv build`.
+- Verified that all assets, including `src/workbench/ui/app.html`, are included in the packaged wheel without external runtime dependencies.
+- Added integration smoke test in `tests/integration/test_packaging_smoke.py` verifying wheel build, entrypoint executable discovery, and command execution.
+- Authored comprehensive distribution guide `PACKAGING.md` detailing distribution paths, release checklists, platform support (Windows, macOS, Linux), and self-contained PyInstaller binary evaluation.
+- All M5 tasks marked DONE. Transitioned to M6.
+
+### M6 Milestone Completed: Advanced Capabilities & MCP (2026-10-23)
+- Implemented `TemplateCatalog` in `src/workbench/templates/catalog.py` providing 4 curated industry domain cleaning recipes (`crm_standardize`, `financial_clean`, `clinical_clean`, `ecommerce_catalog`).
+- Added CLI commands `workbench template list [--format json|table]` and `workbench template apply <id> <input> --output <output> [--overwrite]`.
+- Implemented local stdio JSON-RPC 2.0 Model Context Protocol (MCP) server in `src/workbench/adapters/mcp/server.py` supporting `initialize`, `tools/list`, and `tools/call` for `profile_dataset`, `validate_pipeline`, `preview_transformation`, and `list_templates`.
+- Added CLI command `workbench mcp` for seamless stdio integration into AI IDEs and desktop assistants.
+- Verified strict threat boundary in `tests/security/test_mcp_threat_boundary.py`: path traversal rejection, unsupported binary format rejection, zero network listening sockets (Rule 10), and zero raw row leaks in profiles.
+- Added comprehensive unit tests in `tests/unit/templates/test_templates.py` and `tests/unit/mcp/test_mcp_server.py`.
+- Total 140 tests passing across all suites. Ruff linting and formatting 100% clean.
+- All M6 tasks (M6-01 and M6-02) marked DONE. All project roadmap phases complete!
 
 ## Update protocol
 

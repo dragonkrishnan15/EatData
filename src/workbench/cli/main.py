@@ -362,6 +362,69 @@ def cmd_ui(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_template_list(args: argparse.Namespace) -> int:
+    from workbench.templates.catalog import TemplateCatalog
+
+    catalog = TemplateCatalog()
+    templates = catalog.list_templates()
+
+    if getattr(args, "format", "table") == "json":
+        import json
+
+        data = [t.to_dict() for t in templates]
+        sys.stdout.write(json.dumps(data, indent=2) + "\n")
+        return 0
+
+    sys.stdout.write("\nAvailable Cleaning Templates:\n")
+    sys.stdout.write(f"{'=' * 70}\n")
+    sys.stdout.write(f"{'ID':<20} {'Category':<22} {'Name':<25}\n")
+    sys.stdout.write(f"{'-' * 70}\n")
+    for t in templates:
+        sys.stdout.write(f"{t.template_id:<20} {t.category:<22} {t.name:<25}\n")
+        sys.stdout.write(f"  Description: {t.description}\n")
+        sys.stdout.write(f"  Steps: {len(t.pipeline.steps)} operations\n\n")
+    return 0
+
+
+def cmd_template_apply(args: argparse.Namespace) -> int:
+    from workbench.templates.catalog import TemplateCatalog
+
+    catalog = TemplateCatalog()
+    template = catalog.get(args.template_id)
+    if not template:
+        available = ", ".join(t.template_id for t in catalog.list_templates())
+        raise WorkbenchError(
+            f"Unknown template: '{args.template_id}'. Available templates: {available}"
+        )
+
+    input_path = Path(args.input_path)
+    output_path = Path(args.output)
+
+    dataset = load_dataset(input_path)
+    registry = TransformationRegistry()
+    transformed, _ = registry.execute_pipeline(dataset, template.pipeline)
+
+    save_dataset(
+        dataset=transformed,
+        output_path=output_path,
+        source_path=input_path,
+        overwrite=args.overwrite,
+    )
+    sys.stdout.write(
+        f"Successfully applied template '{template.name}' to {output_path} "
+        f"({transformed.row_count} rows, {transformed.column_count} columns).\n"
+    )
+    return 0
+
+
+def cmd_mcp(args: argparse.Namespace) -> int:
+    from workbench.adapters.mcp.server import MCPServer
+
+    server = MCPServer()
+    server.run_stdio()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="workbench",
@@ -460,6 +523,30 @@ def build_parser() -> argparse.ArgumentParser:
         "--output-pipeline", help="Optional destination path to save proposed pipeline JSON."
     )
     p_ai_prop.set_defaults(func=cmd_ai_propose)
+
+    # template
+    p_tpl = subparsers.add_parser("template", help="Manage and apply domain cleaning templates.")
+    tpl_subs = p_tpl.add_subparsers(dest="subcommand", required=True)
+    p_tpl_list = tpl_subs.add_parser("list", help="List available curated templates.")
+    p_tpl_list.add_argument(
+        "--format", choices=["table", "json"], default="table", help="Output format."
+    )
+    p_tpl_list.set_defaults(func=cmd_template_list)
+
+    p_tpl_apply = tpl_subs.add_parser("apply", help="Apply a template to a dataset.")
+    p_tpl_apply.add_argument("template_id", help="ID of the template to apply.")
+    p_tpl_apply.add_argument("input_path", help="Path to input dataset.")
+    p_tpl_apply.add_argument("--output", required=True, help="Destination output path.")
+    p_tpl_apply.add_argument(
+        "--overwrite", action="store_true", help="Allow overwrite of output file."
+    )
+    p_tpl_apply.set_defaults(func=cmd_template_apply)
+
+    # mcp
+    p_mcp = subparsers.add_parser(
+        "mcp", help="Run local stdio Model Context Protocol (MCP) server."
+    )
+    p_mcp.set_defaults(func=cmd_mcp)
 
     return parser
 
