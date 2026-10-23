@@ -4,20 +4,20 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 
 ## Current phase
 
-**Phase:** M0 — Repository and contracts  
-**Overall status:** TODO  
-**Current next task:** Inspect/create repository baseline and define domain contracts.  
-**Last verified:** Not yet verified.
+**Phase:** M1 — Local engine  
+**Overall status:** IN_PROGRESS  
+**Current next task:** Implement CSV importer with limits and structured errors (M1-01).  
+**Last verified:** 2026-10-23 (27 unit and security tests passing, ruff lint/format clean).
 
 ## Task board
 
 | ID | Status | Task | Depends on | Acceptance / evidence |
 |---|---|---|---|---|
-| M0-01 | DONE | Inspect repository, Python version, git status, and existing files | None | Git repo initialized (`master`), Python 3.15 + uv 0.13.0 verified. Initial files preserved. |
-| M0-02 | TODO | Set up package, test runner, formatter/linter, and dependency policy | M0-01 | Clean test/lint run documented |
-| M0-03 | TODO | Define Dataset, Profile, Operation, Pipeline, and structured error contracts | M0-01 | Unit tests for validation and serialization |
-| M0-04 | TODO | Add synthetic CSV/JSON fixtures including malformed and edge-case data | M0-01 | Fixtures contain no real sensitive data |
-| M0-05 | TODO | Add privacy tests and threat-model review | M0-03, M0-04 | Tests verify payload/log redaction invariants |
+| M0-01 | DONE | Inspect repository, Python version, git status, and existing files | None | Git repo initialized (`main`), Python 3.15 + uv 0.13.0 verified. Remote tracking configured. |
+| M0-02 | DONE | Set up package, test runner, formatter/linter, and dependency policy | M0-01 | `pyproject.toml` created, hatchling build, pytest 9.1.1 + ruff 0.17.2 verified clean. |
+| M0-03 | DONE | Define Dataset, Profile, Operation, Pipeline, and structured error contracts | M0-01 | Domain models created in `src/workbench/domain/`, 21 unit tests passing. |
+| M0-04 | DONE | Add synthetic CSV/JSON fixtures including malformed and edge-case data | M0-01 | 9 synthetic fixtures in `tests/fixtures/`, zero secrets or real data verified via tests. |
+| M0-05 | DONE | Add privacy tests and threat-model review | M0-03, M0-04 | `THREAT_MODEL.md` created; `tests/security/` verifies redaction and allowlist invariants. |
 | M1-01 | TODO | Implement CSV importer with limits and structured errors | M0-02, M0-03 | Import tests pass |
 | M1-02 | TODO | Implement JSON importer with nesting/resource limits | M0-02, M0-03 | Import tests pass |
 | M1-03 | TODO | Implement local profiler | M1-01, M1-02 | Counts and inferred types tested |
@@ -45,12 +45,20 @@ Legend: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`. Update status and evidence in 
 
 ## Work log
 
-### Baseline Setup (2026-10-23)
-- Inspected repository baseline: existing files `ARCHITECTURE.md`, `PLAN.md`, `RULES.md`, `TRACKER.md`.
-- Detected Python environment: `uv` 0.13.0 and Python 3.15 installed.
-- Initialized local git repository on branch `master`.
-- Added standard `.gitignore`, `MEMORY.md`, and `DECISIONS.md` (ADR-001, ADR-002).
-- M0-01 marked DONE.
+### M0 Milestone Completed: Repository & Contracts (2026-10-23)
+- Created missing foundational documents: `README.md`, `DESIGN.md`, `THREAT_MODEL.md`.
+- Formatted `pyproject.toml` with `hatchling`, configured `pytest` and `ruff`.
+- Initialized Python environment with `uv` (installed `pytest==9.1.1`, `pytest-cov==7.1.0`, `ruff==0.17.2`).
+- Defined core domain models in `src/workbench/domain/`:
+  - `Dataset`, `ColumnMetadata`, `DataType` (immutable containers, safe `__repr__` without row leaking)
+  - `DatasetProfile`, `ColumnProfile` (statistical summaries, allowlisted safe metadata)
+  - `Operation`, `OperationName`, `ALLOWLISTED_OPERATIONS` (strict allowlist validation)
+  - `Pipeline` (reproducible step sequence, add/remove/reorder/toggle, schema validation, JSON roundtrip)
+  - `WorkbenchError` and structured error hierarchy in `errors.py`.
+- Added 9 synthetic CSV and JSON fixtures in `tests/fixtures/` (clean, messy, malformed, empty, header-only, formula-injection, nested).
+- Implemented unit and security tests in `tests/unit/domain/`, `tests/unit/test_fixtures.py`, `tests/security/test_privacy_invariants.py`.
+- Verified 27 tests passing, `ruff check` clean, `ruff format` clean.
+- All M0 tasks (M0-01 to M0-05) marked DONE. Transitioned to M1.
 
 ## Update protocol
 

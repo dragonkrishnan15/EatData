@@ -143,8 +143,7 @@ Conceptual interface:
 
 ```python
 class AIProvider:
-    def generate_recipe(self, request: MetadataRequest) -> ProviderResponse:
-        ...
+    def generate_recipe(self, request: MetadataRequest) -> ProviderResponse: ...
 ```
 
 The actual interface should support timeouts, cancellation if available, bounded response sizes, structured errors, and provider identification. Keep provider-specific request formats inside adapters.

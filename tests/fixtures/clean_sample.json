@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "product": "Widget A",
+    "price": 19.99,
+    "in_stock": true,
+    "tags": ["hardware", "tools"]
+  },
+  {
+    "id": 2,
+    "product": "Widget B",
+    "price": 29.5,
+    "in_stock": false,
+    "tags": ["electronics"]
+  },
+  {
+    "id": 3,
+    "product": "Gadget C",
+    "price": 99.0,
+    "in_stock": true,
+    "tags": ["hardware"]
+  }
+]

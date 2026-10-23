@@ -1,0 +1,20 @@
+[
+  {
+    "order_id": "ORD-101",
+    "customer": {
+      "name": "Jane Doe",
+      "address": {
+        "city": "Denver",
+        "zip": "80202",
+        "geo": {
+          "lat": 39.7392,
+          "lng": -104.9903
+        }
+      }
+    },
+    "items": [
+      {"item_id": "IT-1", "quantity": 2, "unit_price": 15.0},
+      {"item_id": "IT-2", "quantity": 1, "unit_price": 40.0}
+    ]
+  }
+]

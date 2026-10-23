@@ -1,0 +1,6 @@
+id,user_input,amount
+1,=cmd|'/C calc'!A0,100
+2,@SUM(A1:A10),250
+3,+1+2,300
+4,-5+2,-3
+5,"	tab_prefixed",40

@@ -1,0 +1,7 @@
+  id  , full_name ,age ,city ,signup_date,active
+1,  Alice Smith  ,34, Seattle ,2023-01-15,true
+2,Bob Jones,,Chicago,2023-02-20,false
+2,Bob Jones,,Chicago,2023-02-20,false
+3, Charlie Brown ,45,Boston,03/12/2023,yes
+4,Diana Prince ,31,,2023-04-05,1
+5, Evan Wright, N/A ,Atlanta,2023-05-18,0
